@@ -7,7 +7,7 @@
 
 ## Overview
 
-A local Streamlit application that ingests artistic swimming competition result PDFs from rgform.eu/ksis.eu, stores structured data in a SQLite database, and provides dashboards for tracking athlete and club performance across competitions.
+A local PoC Streamlit application (simplicity over robustness) that ingests artistic swimming competition result PDFs from rgform.eu/ksis.eu, stores structured data in a SQLite database, and provides dashboards for tracking athlete and club performance across competitions.
 
 ---
 
@@ -119,7 +119,7 @@ Edge cases:
 | Database | `sqlite3` (stdlib) |
 | Data manipulation | `pandas` |
 | Charts | `plotly express` |
-| Config | `.env` via `python-dotenv` |
+| Config | hardcoded `~/aquabely_inbox` path |
 
 Python 3.11+. No external database server required.
 
@@ -143,7 +143,7 @@ aquabely/
   inbox/                  # drop PDFs here (gitignored)
   aquabely.db             # SQLite file (gitignored)
   requirements.txt
-  .env.example            # INBOX_PATH=./inbox
+  # inbox path hardcoded to ~/aquabely_inbox
 ```
 
 ---
