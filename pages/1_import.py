@@ -5,7 +5,7 @@ import streamlit as st
 import db.database as database
 from parser.pdf_parser import file_sha256, parse_pdf
 
-INBOX = Path.home() / "aquabely_inbox"
+INBOX = Path(__file__).parent.parent / "data"
 
 st.title("Import Results")
 
