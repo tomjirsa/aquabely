@@ -208,34 +208,46 @@ def _parse_results(lines: list[str], figures: list) -> list:
         pts_str = rm.group(5) or ""
         points_behind = float(pts_str) if pts_str else 0.0
 
-        # The athlete block surrounds the rank line:
-        # rank_idx-2: F1 line (or sometimes rank_idx-1)
-        # rank_idx-1: entry/name line (F2)
-        # rank_idx:   rank line
-        # rank_idx+1: club/F3 line
-        # rank_idx+2: F4 line
+        # The athlete block surrounds the rank line.
+        # The entry/name line is always 1 before the rank line and the club line
+        # is always 1 after.  Figure score lines extend outward from those anchors
+        # by however many standalone figures exist (n_figures - 2, distributed
+        # floor(…/2) above the name line and ceil(…/2) below the club line).
+        #
+        # For n_figures=4: offsets -2, -1, 0, +1, +2
+        # For n_figures=3: offsets     -1, 0, +1, +2
+        # For n_figures=5: offsets -2, -1, 0, +1, +2, +3
+        #
+        # Name/entry is always at rank_idx-1; club is always at rank_idx+1.
 
-        f1_line = lines[rank_idx - 2].strip() if rank_idx >= 2 else ""
-        f2_line = lines[rank_idx - 1].strip() if rank_idx >= 1 else ""
-        f3_line = lines[rank_idx + 1].strip() if rank_idx + 1 < len(lines) else ""
-        f4_line = lines[rank_idx + 2].strip() if rank_idx + 2 < len(lines) else ""
+        name_line = lines[rank_idx - 1].strip() if rank_idx >= 1 else ""
+        club_line = lines[rank_idx + 1].strip() if rank_idx + 1 < len(lines) else ""
 
-        # Parse entry number and name from the F2 line
+        # Parse entry number and name from the name line
         entry_number, name = 0, ""
-        nm = _ENTRY_NAME.match(f2_line)
+        nm = _ENTRY_NAME.match(name_line)
         if nm:
             entry_number = int(nm.group(1))
             name = nm.group(2).strip()
 
-        # Parse club from the F3 line
+        # Parse club from the club line
         club = ""
-        cm = _CLUB_LINE.match(f3_line)
+        cm = _CLUB_LINE.match(club_line)
         if cm:
             club = cm.group(1).strip()
 
+        # Build the dynamic athlete block for figure-score scanning.
+        # n_figures//2 standalone lines appear before the name line;
+        # the remainder appear after the club line.
+        lines_above = n_figures // 2
+        lines_below = n_figures - n_figures // 2  # includes the club line itself
+        block_start = max(0, rank_idx - lines_above - 1)  # -1 for name line
+        block_end = min(len(lines), rank_idx + lines_below + 1)  # +1 for club line
+        athlete_block = [lines[i].strip() for i in range(block_start, block_end)]
+
         # Parse figure scores
         figure_results: list[FigureResult] = []
-        for fig_line in [f1_line, f2_line, f3_line, f4_line]:
+        for fig_line in athlete_block:
             fsm = _FIG_SCORE.search(fig_line)
             if fsm:
                 fig_num = fsm.group(1)
