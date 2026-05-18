@@ -241,7 +241,7 @@ def _parse_results(lines: list[str], figures: list) -> list:
         # the remainder appear after the club line.
         lines_above = n_figures // 2
         lines_below = n_figures - n_figures // 2  # includes the club line itself
-        block_start = max(0, rank_idx - lines_above - 1)  # -1 for name line
+        block_start = max(0, rank_idx - lines_above)
         block_end = min(len(lines), rank_idx + lines_below + 1)  # +1 for club line
         athlete_block = [lines[i].strip() for i in range(block_start, block_end)]
 
