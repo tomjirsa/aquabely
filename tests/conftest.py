@@ -30,3 +30,36 @@ def sample_parsed_pdf():
             )
         ],
     )
+
+
+@pytest.fixture
+def two_athlete_pdf():
+    return ParsedPDF(
+        competition_name="Rank Cup",
+        date="2026-03-01",
+        category_name="Beginner L1",
+        figures=[
+            FigureDef("F1", "Ballet Leg", 1.6),
+            FigureDef("F2", "Kipnus", 1.4),
+        ],
+        results=[
+            AthleteResult(
+                rank=1, entry_number=1,
+                name="Alice", club="Club A", country="CZE", yob=2015,
+                total_score=70.0, penalty=0.0, points_behind=0.0,
+                figure_results=[
+                    FigureResult("F1", [7.0] * 7, 11.2, 0.0),
+                    FigureResult("F2", [6.0] * 7, 8.4, 0.0),
+                ],
+            ),
+            AthleteResult(
+                rank=2, entry_number=2,
+                name="Bob", club="Club B", country="CZE", yob=2015,
+                total_score=60.0, penalty=0.0, points_behind=0.0,
+                figure_results=[
+                    FigureResult("F1", [5.0] * 7, 8.0, 0.0),
+                    FigureResult("F2", [8.0] * 7, 11.2, 0.0),
+                ],
+            ),
+        ],
+    )

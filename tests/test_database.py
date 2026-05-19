@@ -60,3 +60,32 @@ def test_insert_idempotent(sample_parsed_pdf):
     with database.get_connection() as conn:
         count = conn.execute("SELECT COUNT(*) FROM results").fetchone()[0]
     assert count == 1  # only one insert happened
+
+
+def test_get_athlete_rankings_returns_correct_overall_rank(two_athlete_pdf):
+    database.init_schema()
+    database.insert_pdf_result(two_athlete_pdf, "rank.pdf", "rankhash1")
+    with database.get_connection() as conn:
+        alice_id = conn.execute(
+            "SELECT id FROM athletes WHERE name='Alice'"
+        ).fetchone()["id"]
+    df = database.get_athlete_rankings(alice_id)
+    assert len(df) == 2  # one row per figure
+    f1 = df[df["figure_number"] == "F1"].iloc[0]
+    f2 = df[df["figure_number"] == "F2"].iloc[0]
+    assert f1["rank_overall"] == 1   # Alice ranked 1st overall
+    assert f1["fig_rank_overall"] == 1  # Alice best in F1
+    assert f2["fig_rank_overall"] == 2  # Alice 2nd in F2 (Bob scored higher)
+
+
+def test_get_athlete_rankings_by_year_equals_overall_when_same_yob(two_athlete_pdf):
+    database.init_schema()
+    database.insert_pdf_result(two_athlete_pdf, "rank.pdf", "rankhash2")
+    with database.get_connection() as conn:
+        alice_id = conn.execute(
+            "SELECT id FROM athletes WHERE name='Alice'"
+        ).fetchone()["id"]
+    df = database.get_athlete_rankings(alice_id)
+    # Both athletes share yob=2015, so by-year == overall
+    assert (df["rank_overall"] == df["rank_by_year"]).all()
+    assert (df["fig_rank_overall"] == df["fig_rank_by_year"]).all()
