@@ -171,11 +171,11 @@ if not fig_df.empty:
             JOIN athletes a ON a.id = r.athlete_id
             JOIN categories cat ON cat.id = r.category_id
             JOIN competitions c ON c.id = cat.competition_id
-            WHERE a.name = ? AND c.name = ?
+            WHERE a.id = ? AND c.name = ?
             ORDER BY f.number
             """,
             conn,
-            params=(name, selected_comp),
+            params=(athlete_id, selected_comp),
         )
 
     judge_cols = [
