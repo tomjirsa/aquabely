@@ -76,6 +76,7 @@ else:
         else:
             trace.line.dash = "dash"
             trace.line.width = 1.5
+    fig_pos.update_layout(legend=dict(orientation="h", yanchor="top", y=-0.3, xanchor="center", x=0.5))
     st.plotly_chart(fig_pos, use_container_width=True)
 
 # ── Scores ────────────────────────────────────────────────────────────────────
@@ -110,6 +111,7 @@ fig = px.line(
     title="Total score over time",
     labels={"total_score": "Score", "date": "Date"},
 )
+fig.update_layout(legend=dict(orientation="h", yanchor="top", y=-0.3, xanchor="center", x=0.5))
 st.plotly_chart(fig, use_container_width=True)
 
 with database.get_connection() as conn:
@@ -145,6 +147,7 @@ if not fig_df.empty:
         labels={"figure_score": "Score", "date": "Date", "figure_label": "Figure"},
         category_orders={"figure_label": fig_order},
     )
+    fig2.update_layout(legend=dict(orientation="h", yanchor="top", y=-0.3, xanchor="center", x=0.5))
     st.plotly_chart(fig2, use_container_width=True)
 
     fig3 = px.bar(
@@ -153,6 +156,7 @@ if not fig_df.empty:
         labels={"figure_label": "Figure", "figure_score": "Score"},
         category_orders={"figure_label": fig_order, "competition": comp_order},
     )
+    fig3.update_layout(legend=dict(orientation="h", yanchor="top", y=-0.3, xanchor="center", x=0.5))
     st.plotly_chart(fig3, use_container_width=True)
 
     st.subheader("Judge marks per figure")
@@ -202,5 +206,5 @@ if not fig_df.empty:
             )
         },
     )
-    fig4.update_layout(yaxis_range=[0, 10])
+    fig4.update_layout(yaxis_range=[0, 10], legend=dict(orientation="h", yanchor="top", y=-0.3, xanchor="center", x=0.5))
     st.plotly_chart(fig4, use_container_width=True)
