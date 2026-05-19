@@ -25,9 +25,9 @@ def _style_rank_row(row: pd.Series, fig_cols: list[str]) -> list[str]:
         if col not in fig_cols or pd.isna(row[col]):
             styles.append("")
         elif int(row[col]) < int(overall):
-            styles.append("background-color: #003314; color: #00C853")
+            styles.append("background-color: #DCFCE7; color: #166534")
         elif int(row[col]) > int(overall):
-            styles.append("background-color: #3d0010; color: #FF1744")
+            styles.append("background-color: #FEE2E2; color: #991B1B")
         else:
-            styles.append("background-color: #1c2530; color: #78909C")
+            styles.append("background-color: #F3F4F6; color: #4B5563")
     return styles
