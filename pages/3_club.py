@@ -137,5 +137,5 @@ def _style_row(row: pd.Series) -> list[str]:
             styles.append("background-color: #F3F4F6; color: #4B5563")
     return styles
 
-styled = wide.style.apply(_style_row, axis=1).format(na_rep="—")
+styled = wide.style.apply(_style_row, axis=1).format("{:.0f}", na_rep="—")
 st.dataframe(styled, use_container_width=True)

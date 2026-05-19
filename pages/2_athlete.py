@@ -46,7 +46,7 @@ else:
     styled = (
         display.style
         .apply(_style_display_row, axis=1)
-        .format(na_rep="—", subset=fig_cols)
+        .format("{:.0f}", na_rep="—", subset=[rank_label] + fig_cols)
     )
     st.dataframe(styled, use_container_width=True)
 
