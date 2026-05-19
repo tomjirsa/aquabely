@@ -3,7 +3,7 @@ import plotly.express as px
 import streamlit as st
 
 import db.database as database
-from pages._athlete import _build_ranking_table, _style_rank_row
+from _athlete import _build_ranking_table, _style_rank_row
 
 st.title("Athletes")
 

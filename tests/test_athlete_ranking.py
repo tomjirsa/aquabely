@@ -1,6 +1,6 @@
 import pandas as pd
 import pytest
-from pages._athlete import _build_ranking_table, _style_rank_row
+from _athlete import _build_ranking_table, _style_rank_row
 
 
 @pytest.fixture
