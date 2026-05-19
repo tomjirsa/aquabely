@@ -91,11 +91,11 @@ with database.get_connection() as conn:
         JOIN athletes a ON a.id = r.athlete_id
         JOIN categories cat ON cat.id = r.category_id
         JOIN competitions c ON c.id = cat.competition_id
-        WHERE a.name = ?
+        WHERE a.id = ?
         ORDER BY c.date
         """,
         conn,
-        params=(name,),
+        params=(athlete_id,),
     )
 
 if df.empty:
@@ -123,11 +123,11 @@ with database.get_connection() as conn:
         JOIN athletes a ON a.id = r.athlete_id
         JOIN categories cat ON cat.id = r.category_id
         JOIN competitions c ON c.id = cat.competition_id
-        WHERE a.name = ?
+        WHERE a.id = ?
         ORDER BY c.date, f.number
         """,
         conn,
-        params=(name,),
+        params=(athlete_id,),
     )
 
 if not fig_df.empty:
