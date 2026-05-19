@@ -38,21 +38,21 @@ def test_style_rank_row_green_when_figure_better():
     row = pd.Series({"competition": "Cup", "date": "2026-01-01",
                      "overall_rank": 3, "F1": 1, "F2": 5, "F3": 3})
     styles = _style_rank_row(row, ["F1", "F2", "F3"])
-    assert styles[3] == "background-color: #1a4a2e; color: #57cc99"  # F1 < 3
+    assert styles[3] == "background-color: #003314; color: #00C853"  # F1 < 3
 
 
 def test_style_rank_row_red_when_figure_worse():
     row = pd.Series({"competition": "Cup", "date": "2026-01-01",
                      "overall_rank": 3, "F1": 1, "F2": 5, "F3": 3})
     styles = _style_rank_row(row, ["F1", "F2", "F3"])
-    assert styles[4] == "background-color: #4a1a1a; color: #e07070"  # F2 > 3
+    assert styles[4] == "background-color: #3d0010; color: #FF1744"  # F2 > 3
 
 
 def test_style_rank_row_grey_when_figure_equal():
     row = pd.Series({"competition": "Cup", "date": "2026-01-01",
                      "overall_rank": 3, "F1": 1, "F2": 5, "F3": 3})
     styles = _style_rank_row(row, ["F1", "F2", "F3"])
-    assert styles[5] == "background-color: #2a2a2a; color: #888888"  # F3 == 3
+    assert styles[5] == "background-color: #1c2530; color: #78909C"  # F3 == 3
 
 
 def test_style_rank_row_empty_for_non_figure_columns():
