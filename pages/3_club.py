@@ -1,5 +1,4 @@
 import pandas as pd
-import plotly.express as px
 import streamlit as st
 
 import db.database as database
@@ -9,9 +8,7 @@ st.title("Clubs")
 database.init_schema()
 
 with database.get_connection() as conn:
-    clubs = pd.read_sql(
-        "SELECT DISTINCT club FROM athletes ORDER BY club", conn
-    )
+    clubs = pd.read_sql("SELECT DISTINCT club FROM athletes ORDER BY club", conn)
 
 if clubs.empty:
     st.info("No data yet — import PDFs on the Import page.")
@@ -20,105 +17,125 @@ if clubs.empty:
 club = st.selectbox("Club", clubs["club"].tolist())
 
 with database.get_connection() as conn:
-    df = pd.read_sql(
-        """
-        SELECT a.name, a.country, c.name AS competition, c.date,
-               cat.name AS category, r.rank, r.total_score
-        FROM results r
-        JOIN athletes a ON a.id = r.athlete_id
-        JOIN categories cat ON cat.id = r.category_id
-        JOIN competitions c ON c.id = cat.competition_id
-        WHERE a.club = ?
-        ORDER BY c.date, r.rank
-        """,
+    athletes_df = pd.read_sql(
+        "SELECT name, year_of_birth, country FROM athletes WHERE club = ? ORDER BY name",
         conn,
         params=(club,),
     )
 
-if df.empty:
-    st.info("No results found for this club.")
+if athletes_df.empty:
+    st.info("No athletes found for this club.")
     st.stop()
 
-st.dataframe(df, use_container_width=True)
+# ── Athletes ──────────────────────────────────────────────────────────────────
 
-col1, col2 = st.columns(2)
+st.subheader("Athletes")
+st.dataframe(athletes_df, use_container_width=True)
 
-medals = (
-    df[df["rank"] <= 3]
-    .groupby("rank")
-    .size()
-    .reset_index(name="count")
-)
-medals["medal"] = medals["rank"].map({1: "🥇 Gold", 2: "🥈 Silver", 3: "🥉 Bronze"})
-col1.subheader("Medal tally")
-col1.dataframe(medals[["medal", "count"]], use_container_width=True)
+# ── Medal tally ───────────────────────────────────────────────────────────────
 
-comp_order = list(dict.fromkeys(df.sort_values("date")["competition"]))
-avg = df.groupby("competition")["total_score"].mean().reset_index()
-fig = px.bar(
-    avg, x="competition", y="total_score",
-    title="Avg score per competition", labels={"total_score": "Avg score"},
-    category_orders={"competition": comp_order},
-)
-fig.update_layout(legend=dict(orientation="h", yanchor="top", y=-0.3, xanchor="center", x=0.5))
-col2.plotly_chart(fig, use_container_width=True)
+st.subheader("Medal tally")
 
 with database.get_connection() as conn:
-    fig_df = pd.read_sql(
+    results_df = pd.read_sql(
         """
-        SELECT f.number AS figure, f.name AS figure_name,
-               fr.score, c.name AS competition, c.date
-        FROM figure_results fr
-        JOIN results r ON r.id = fr.result_id
+        SELECT r.rank FROM results r
         JOIN athletes a ON a.id = r.athlete_id
-        JOIN figures f ON f.id = fr.figure_id
-        JOIN categories cat ON cat.id = r.category_id
-        JOIN competitions c ON c.id = cat.competition_id
         WHERE a.club = ?
-        ORDER BY c.date, f.number
         """,
         conn,
         params=(club,),
     )
 
-if not fig_df.empty:
-    fig_df = fig_df.sort_values("date")
-    avg_time = (
-        fig_df.groupby(["date", "figure", "figure_name"])["score"]
-        .mean()
-        .reset_index()
-        .sort_values("date")
+if not results_df.empty:
+    medals = (
+        results_df[results_df["rank"] <= 3]
+        .groupby("rank")
+        .size()
+        .reset_index(name="count")
     )
-    avg_time["figure_label"] = avg_time["figure"] + ": " + avg_time["figure_name"]
-    fig_order = sorted(avg_time["figure_label"].unique(), key=lambda x: int(x[1:x.index(":")]))
-    avg_chart = px.line(
-        avg_time, x="date", y="score", color="figure_label", markers=True,
-        title="Avg figure score over time",
-        labels={"date": "Date", "score": "Avg score", "figure_label": "Figure"},
-        category_orders={"figure_label": fig_order},
-    )
-    avg_chart.update_layout(legend=dict(orientation="h", yanchor="top", y=-0.3, xanchor="center", x=0.5))
-    st.plotly_chart(avg_chart, use_container_width=True)
+    medals["medal"] = medals["rank"].map({1: "🥇 Gold", 2: "🥈 Silver", 3: "🥉 Bronze"})
+    st.dataframe(medals[["medal", "count"]], use_container_width=True)
 
-    st.subheader("Score distribution by figure")
-    fig_df = fig_df.sort_values("figure")
-    y_min = 0
-    y_max = 20
-    competitions = sorted(fig_df["competition"].unique())
-    for comp in competitions:
-        subset = fig_df[fig_df["competition"] == comp]
-        chart = px.box(
-            subset, x="figure", y="score",
-            title=comp,
-            labels={"figure": "Figure", "score": "Score"},
-            points="all",
-            hover_data=["figure_name"],
-            category_orders={"figure": sorted(subset["figure"].unique(), key=lambda x: int(x[1:]))},
-        )
-        chart.update_traces(boxmean=True)
-        chart.update_layout(
-            yaxis_range=[y_min, y_max],
-            margin=dict(t=40, b=20, l=20, r=20),
-            legend=dict(orientation="h", yanchor="top", y=-0.3, xanchor="center", x=0.5),
-        )
-        st.plotly_chart(chart, use_container_width=True)
+# ── Ranking ───────────────────────────────────────────────────────────────────
+
+st.subheader("Ranking")
+mode = st.radio("Ranking mode", ["Overall", "By year of birth"], horizontal=True)
+by_year = mode == "By year of birth"
+
+rank_df = database.get_club_rankings(club)
+
+if rank_df.empty:
+    st.info("No ranking data available.")
+    st.stop()
+
+rank_col = "rank_by_year" if by_year else "rank_overall"
+fig_rank_col = "fig_rank_by_year" if by_year else "fig_rank_overall"
+
+# Build long format: one row per (athlete, competition, metric)
+ovr = rank_df.drop_duplicates(["athlete_name", "competition"])[[
+    "athlete_name", "year_of_birth", "competition", "date", rank_col,
+]].copy()
+ovr["metric"] = "Overall"
+ovr["rank"] = ovr[rank_col]
+
+figs = rank_df[[
+    "athlete_name", "year_of_birth", "competition", "date", "figure_number", fig_rank_col,
+]].copy()
+figs["metric"] = figs["figure_number"]
+figs["rank"] = figs[fig_rank_col]
+
+long = pd.concat([
+    ovr[["athlete_name", "year_of_birth", "competition", "date", "metric", "rank"]],
+    figs[["athlete_name", "year_of_birth", "competition", "date", "metric", "rank"]],
+])
+
+# Pivot to (athlete, yob) × (competition, metric)
+wide = long.pivot_table(
+    index=["athlete_name", "year_of_birth"],
+    columns=["competition", "metric"],
+    values="rank",
+    aggfunc="first",
+)
+wide.columns.names = [None, None]
+wide.index.names = ["Athlete", "Born"]
+
+# Sort rows: by year of birth first in by-year mode, else by name
+if by_year:
+    wide = wide.sort_index(level=["Born", "Athlete"])
+else:
+    wide = wide.sort_index(level="Athlete")
+
+# Sort columns: competitions chronologically, within each comp Overall first then F1 F2…
+comp_date = rank_df.drop_duplicates("competition").set_index("competition")["date"].to_dict()
+sorted_comps = sorted(wide.columns.get_level_values(0).unique(), key=lambda c: comp_date[c])
+
+new_cols = []
+for comp in sorted_comps:
+    metrics = list(wide[comp].columns)
+    fig_metrics = sorted([m for m in metrics if m != "Overall"], key=lambda x: int(x[1:]))
+    for m in (["Overall"] if "Overall" in metrics else []) + fig_metrics:
+        new_cols.append((comp, m))
+wide = wide[new_cols]
+
+# Style figure rank cells relative to overall rank in the same competition
+def _style_row(row: pd.Series) -> list[str]:
+    styles = []
+    for comp, metric in row.index:
+        val = row[(comp, metric)]
+        if metric == "Overall" or pd.isna(val):
+            styles.append("")
+            continue
+        overall = row[(comp, "Overall")]
+        if pd.isna(overall):
+            styles.append("")
+        elif int(val) < int(overall):
+            styles.append("background-color: #DCFCE7; color: #166534")
+        elif int(val) > int(overall):
+            styles.append("background-color: #FEE2E2; color: #991B1B")
+        else:
+            styles.append("background-color: #F3F4F6; color: #4B5563")
+    return styles
+
+styled = wide.style.apply(_style_row, axis=1).format(na_rep="—")
+st.dataframe(styled, use_container_width=True)

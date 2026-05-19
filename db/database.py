@@ -87,6 +87,58 @@ def insert_pdf_result(parsed, filename: str, sha256: str):
         )
 
 
+def get_club_rankings(club: str) -> "pd.DataFrame":
+    sql = """
+    WITH all_ranks AS (
+        SELECT
+            r.id          AS result_id,
+            a.id          AS athlete_id,
+            a.name        AS athlete_name,
+            a.club,
+            a.year_of_birth,
+            c.name        AS competition,
+            c.date,
+            RANK() OVER (PARTITION BY cat.id
+                         ORDER BY r.total_score DESC)         AS rank_overall,
+            RANK() OVER (PARTITION BY cat.id, a.year_of_birth
+                         ORDER BY r.total_score DESC)         AS rank_by_year
+        FROM results r
+        JOIN athletes   a   ON a.id   = r.athlete_id
+        JOIN categories cat ON cat.id = r.category_id
+        JOIN competitions c ON c.id   = cat.competition_id
+    ),
+    fig_ranks AS (
+        SELECT
+            fr.result_id,
+            f.number AS figure_number,
+            RANK() OVER (PARTITION BY f.id
+                         ORDER BY fr.score DESC)              AS rank_overall,
+            RANK() OVER (PARTITION BY f.id, a.year_of_birth
+                         ORDER BY fr.score DESC)              AS rank_by_year
+        FROM figure_results fr
+        JOIN figures  f ON f.id  = fr.figure_id
+        JOIN results  r ON r.id  = fr.result_id
+        JOIN athletes a ON a.id  = r.athlete_id
+    )
+    SELECT
+        ar.athlete_name,
+        ar.year_of_birth,
+        ar.competition,
+        ar.date,
+        ar.rank_overall,
+        ar.rank_by_year,
+        fr.figure_number,
+        fr.rank_overall  AS fig_rank_overall,
+        fr.rank_by_year  AS fig_rank_by_year
+    FROM all_ranks ar
+    JOIN fig_ranks fr ON fr.result_id = ar.result_id
+    WHERE ar.club = ?
+    ORDER BY ar.athlete_name, ar.date, fr.figure_number
+    """
+    with get_connection() as conn:
+        return pd.read_sql(sql, conn, params=(club,))
+
+
 def get_athlete_rankings(athlete_id: int) -> "pd.DataFrame":
     sql = """
     WITH all_ranks AS (
