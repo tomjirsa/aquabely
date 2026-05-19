@@ -1,4 +1,5 @@
 import pandas as pd
+import plotly.express as px
 import streamlit as st
 
 import db.database as database
@@ -139,3 +140,69 @@ def _style_row(row: pd.Series) -> list[str]:
 
 styled = wide.style.apply(_style_row, axis=1).format("{:.0f}", na_rep="—")
 st.dataframe(styled, use_container_width=True)
+
+# ── Scores ────────────────────────────────────────────────────────────────────
+
+st.subheader("Scores")
+
+with database.get_connection() as conn:
+    total_df = pd.read_sql(
+        """
+        SELECT c.name AS competition, c.date,
+               AVG(r.total_score) AS avg_total
+        FROM results r
+        JOIN athletes a ON a.id = r.athlete_id
+        JOIN categories cat ON cat.id = r.category_id
+        JOIN competitions c ON c.id = cat.competition_id
+        WHERE a.club = ?
+        GROUP BY c.name, c.date
+        ORDER BY c.date
+        """,
+        conn,
+        params=(club,),
+    )
+    fig_score_df = pd.read_sql(
+        """
+        SELECT c.name AS competition, c.date,
+               f.number AS figure, f.name AS figure_name,
+               AVG(fr.score) AS avg_score
+        FROM figure_results fr
+        JOIN results r ON r.id = fr.result_id
+        JOIN athletes a ON a.id = r.athlete_id
+        JOIN figures f ON f.id = fr.figure_id
+        JOIN categories cat ON cat.id = r.category_id
+        JOIN competitions c ON c.id = cat.competition_id
+        WHERE a.club = ?
+        GROUP BY c.name, c.date, f.number, f.name
+        ORDER BY c.date, f.number
+        """,
+        conn,
+        params=(club,),
+    )
+
+if not total_df.empty:
+    date_order = list(dict.fromkeys(total_df.sort_values("date")["date"]))
+    fig_total = px.line(
+        total_df, x="date", y="avg_total", markers=True,
+        title="Avg total score over time",
+        labels={"avg_total": "Avg score", "date": "Date"},
+        category_orders={"date": date_order},
+    )
+    fig_total.update_layout(legend=dict(orientation="h", yanchor="top", y=-0.3, xanchor="center", x=0.5))
+    st.plotly_chart(fig_total, use_container_width=True)
+
+if not fig_score_df.empty:
+    fig_score_df["figure_label"] = fig_score_df["figure"] + ": " + fig_score_df["figure_name"]
+    fig_order = sorted(
+        fig_score_df["figure_label"].unique(),
+        key=lambda x: int(x[1:x.index(":")]),
+    )
+    date_order = list(dict.fromkeys(fig_score_df.sort_values("date")["date"]))
+    fig_figs = px.line(
+        fig_score_df, x="date", y="avg_score", color="figure_label", markers=True,
+        title="Avg figure scores over time",
+        labels={"avg_score": "Avg score", "date": "Date", "figure_label": "Figure"},
+        category_orders={"figure_label": fig_order, "date": date_order},
+    )
+    fig_figs.update_layout(legend=dict(orientation="h", yanchor="top", y=-0.3, xanchor="center", x=0.5))
+    st.plotly_chart(fig_figs, use_container_width=True)
