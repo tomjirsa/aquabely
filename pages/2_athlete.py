@@ -57,17 +57,18 @@ else:
         value_name="rank",
     )
     chart_df["series"] = chart_df["series"].replace("overall_rank", "Overall")
-    date_order = list(dict.fromkeys(chart_df.sort_values("date")["date"]))
+    chart_df["x_label"] = chart_df["competition"] + "<br>" + chart_df["date"]
+    x_order = list(dict.fromkeys(chart_df.sort_values("date")["x_label"]))
 
     fig_pos = px.line(
         chart_df.dropna(subset=["rank"]),
-        x="date",
+        x="x_label",
         y="rank",
         color="series",
         markers=True,
         title="Positions over time",
-        labels={"rank": "Rank", "date": "Date", "series": ""},
-        category_orders={"date": date_order},
+        labels={"rank": "Rank", "x_label": "", "series": ""},
+        category_orders={"x_label": x_order},
     )
     fig_pos.update_yaxes(autorange="reversed", title="Rank (lower = better)")
     for trace in fig_pos.data:
@@ -106,10 +107,13 @@ if df.empty:
 st.dataframe(df, use_container_width=True)
 
 df = df.sort_values("date")
+df["x_label"] = df["competition"] + "<br>" + df["date"]
+x_order = list(dict.fromkeys(df["x_label"]))
 fig = px.line(
-    df, x="date", y="total_score", markers=True,
+    df, x="x_label", y="total_score", markers=True,
     title="Total score over time",
-    labels={"total_score": "Score", "date": "Date"},
+    labels={"total_score": "Score", "x_label": ""},
+    category_orders={"x_label": x_order},
 )
 fig.update_layout(legend=dict(orientation="h", yanchor="top", y=-0.3, xanchor="center", x=0.5))
 st.plotly_chart(fig, use_container_width=True)
@@ -135,17 +139,19 @@ with database.get_connection() as conn:
 if not fig_df.empty:
     fig_df = fig_df.sort_values("date")
     fig_df["figure_label"] = fig_df["figure"] + ": " + fig_df["figure_name"]
+    fig_df["x_label"] = fig_df["competition"] + "<br>" + fig_df["date"]
     fig_order = sorted(
         fig_df["figure_label"].unique(),
         key=lambda x: int(x[1:x.index(":")]),
     )
     comp_order = list(dict.fromkeys(fig_df.sort_values("date")["competition"]))
+    x_order = list(dict.fromkeys(fig_df["x_label"]))
 
     fig2 = px.line(
-        fig_df, x="date", y="figure_score", color="figure_label", markers=True,
+        fig_df, x="x_label", y="figure_score", color="figure_label", markers=True,
         title="Figure scores over time",
-        labels={"figure_score": "Score", "date": "Date", "figure_label": "Figure"},
-        category_orders={"figure_label": fig_order},
+        labels={"figure_score": "Score", "x_label": "", "figure_label": "Figure"},
+        category_orders={"figure_label": fig_order, "x_label": x_order},
     )
     fig2.update_layout(legend=dict(orientation="h", yanchor="top", y=-0.3, xanchor="center", x=0.5))
     st.plotly_chart(fig2, use_container_width=True)

@@ -181,28 +181,30 @@ with database.get_connection() as conn:
     )
 
 if not total_df.empty:
-    date_order = list(dict.fromkeys(total_df.sort_values("date")["date"]))
+    total_df["x_label"] = total_df["competition"] + "<br>" + total_df["date"]
+    x_order = list(dict.fromkeys(total_df.sort_values("date")["x_label"]))
     fig_total = px.line(
-        total_df, x="date", y="avg_total", markers=True,
+        total_df, x="x_label", y="avg_total", markers=True,
         title="Avg total score over time",
-        labels={"avg_total": "Avg score", "date": "Date"},
-        category_orders={"date": date_order},
+        labels={"avg_total": "Avg score", "x_label": ""},
+        category_orders={"x_label": x_order},
     )
     fig_total.update_layout(legend=dict(orientation="h", yanchor="top", y=-0.3, xanchor="center", x=0.5))
     st.plotly_chart(fig_total, use_container_width=True)
 
 if not fig_score_df.empty:
     fig_score_df["figure_label"] = fig_score_df["figure"] + ": " + fig_score_df["figure_name"]
+    fig_score_df["x_label"] = fig_score_df["competition"] + "<br>" + fig_score_df["date"]
     fig_order = sorted(
         fig_score_df["figure_label"].unique(),
         key=lambda x: int(x[1:x.index(":")]),
     )
-    date_order = list(dict.fromkeys(fig_score_df.sort_values("date")["date"]))
+    x_order = list(dict.fromkeys(fig_score_df.sort_values("date")["x_label"]))
     fig_figs = px.line(
-        fig_score_df, x="date", y="avg_score", color="figure_label", markers=True,
+        fig_score_df, x="x_label", y="avg_score", color="figure_label", markers=True,
         title="Avg figure scores over time",
-        labels={"avg_score": "Avg score", "date": "Date", "figure_label": "Figure"},
-        category_orders={"figure_label": fig_order, "date": date_order},
+        labels={"avg_score": "Avg score", "x_label": "", "figure_label": "Figure"},
+        category_orders={"figure_label": fig_order, "x_label": x_order},
     )
     fig_figs.update_layout(legend=dict(orientation="h", yanchor="top", y=-0.3, xanchor="center", x=0.5))
     st.plotly_chart(fig_figs, use_container_width=True)
