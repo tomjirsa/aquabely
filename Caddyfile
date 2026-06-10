@@ -1,0 +1,45 @@
+# Replace with your DuckDNS hostname, e.g. aquabely.duckdns.org
+{$DOMAIN}:445 {
+    basicauth {
+        # Generate a hash with: docker run --rm caddy:2-alpine caddy hash-password
+        {$AUTH_USER} {$AUTH_HASH}
+    }
+
+    # Strip page prefix from Streamlit internal requests
+    handle /import/_stcore/* {
+        uri strip_prefix /import
+        reverse_proxy app:8504
+    }
+    handle /import/static/* {
+        uri strip_prefix /import
+        reverse_proxy app:8504
+    }
+    handle /Athletes/_stcore/* {
+        uri strip_prefix /Athletes
+        reverse_proxy app:8504
+    }
+    handle /Athletes/static/* {
+        uri strip_prefix /Athletes
+        reverse_proxy app:8504
+    }
+    handle /Clubs/_stcore/* {
+        uri strip_prefix /Clubs
+        reverse_proxy app:8504
+    }
+    handle /Clubs/static/* {
+        uri strip_prefix /Clubs
+        reverse_proxy app:8504
+    }
+    handle /Competitions/_stcore/* {
+        uri strip_prefix /Competitions
+        reverse_proxy app:8504
+    }
+    handle /Competitions/static/* {
+        uri strip_prefix /Competitions
+        reverse_proxy app:8504
+    }
+
+    handle {
+        reverse_proxy app:8504
+    }
+}

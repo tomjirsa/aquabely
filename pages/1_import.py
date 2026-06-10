@@ -1,3 +1,4 @@
+import os
 from pathlib import Path
 
 import streamlit as st
@@ -5,12 +6,19 @@ import streamlit as st
 import db.database as database
 from parser.pdf_parser import file_sha256, parse_pdf
 
-INBOX = Path(__file__).parent.parent / "data"
+INBOX = Path(os.environ.get("AQUABELY_INBOX", Path(__file__).parent.parent / "data"))
 
 st.title("Import Results")
 
 database.init_schema()
 INBOX.mkdir(exist_ok=True)
+
+uploaded = st.file_uploader("Upload PDF", type="pdf", accept_multiple_files=True)
+for uf in (uploaded or []):
+    dest = INBOX / uf.name
+    if not dest.exists():
+        dest.write_bytes(uf.read())
+        st.success(f"Saved {uf.name} to inbox.")
 
 pdfs = sorted(INBOX.glob("*.pdf"))
 if not pdfs:

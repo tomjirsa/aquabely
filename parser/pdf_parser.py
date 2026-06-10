@@ -5,6 +5,22 @@ from pathlib import Path
 
 import pdfplumber
 
+# Map known name variants (lowercased) to a canonical title-cased name.
+# Add entries here when new PDFs introduce different wording for the same figure.
+_FIGURE_NAME_ALIASES: dict[str, str] = {
+    "straight ballet leg": "Ballet Leg Single",
+    "front back layout position to surface arch position to back layout position": "Back Layout to Surface Arch to Back Layout Position",
+    "from back layout position to surface arch position to back layout position": "Back Layout to Surface Arch to Back Layout Position",
+    "kipnus": "Kipnus",
+    "walkover front variant": "Walkover Front Variant",
+}
+
+
+def _normalize_figure_name(name: str) -> str:
+    """Canonical figure name: alias lookup, then title case."""
+    stripped = re.sub(r"\s+", " ", name).strip()
+    return _FIGURE_NAME_ALIASES.get(stripped.lower(), stripped.title())
+
 
 @dataclass
 class FigureDef:
@@ -44,11 +60,13 @@ class ParsedPDF:
     results: list
 
 
-# Matches a figure score line anywhere in a text line:
-# F1 6.10 6.20 6.40 6.20 6.20 6.20 6.20 9.9440 0.00
+# Matches a figure score line with 5-7 judge scores followed by total score and penalty.
+# F1 6.10 6.20 6.40 6.20 6.20 6.20 6.20 9.9440 0.00  (7 judges)
+# F1 5.50 4.90 5.00 4.80 5.00 7.9467 0.00             (5 judges)
 _FIG_SCORE = re.compile(
     r"(F\d+)\s+"
-    r"([\d.]+)\s+([\d.]+)\s+([\d.]+)\s+([\d.]+)\s+([\d.]+)\s+([\d.]+)\s+([\d.]+)\s+"
+    r"([\d.]+)\s+([\d.]+)\s+([\d.]+)\s+([\d.]+)\s+([\d.]+)"
+    r"(?:\s+([\d.]+))?(?:\s+([\d.]+))?\s+"
     r"([\d.]+)\s+([\d.]+)"
 )
 
@@ -103,7 +121,8 @@ def _parse_header(lines: list[str]):
             clean[1],
         )
         if m:
-            date = m.group(1)
+            day, month, year = m.group(1).split(".")
+            date = f"{year}-{month}-{day}"
             category = m.group(2).strip().strip("-").strip()
 
     return comp_name, date, category
@@ -142,18 +161,36 @@ def _parse_figures(lines: list[str]) -> list:
             name = first_part[: dm.start()].strip()
             figures[fig_num] = (name, float(dm.group(1)))
         else:
-            # Difficulty not on this line — scan forward, skipping other F{n}: lines
+            # Difficulty not on this line — scan forward, skipping other F{n}: lines.
+            # The continuation line may carry multiple difficulties when the PDF merges
+            # two columns (e.g. "Back Layout Position (1.2) (1.3)"); extras are assigned
+            # to packed sub-figures (parts[1:]) that also lack an inline difficulty.
             name = first_part
+            pending_subs = [
+                pm2.group(1)
+                for p in parts[1:]
+                for pm2 in [re.match(r"(F\d+):\s*(.*)", p.strip())]
+                if pm2 and not re.search(r"\((\d+\.\d+)\)", pm2.group(2))
+            ]
             for j in range(i + 1, len(header_lines)):
                 next_line = header_lines[j]
                 if re.match(r"F\d+:", next_line):
                     continue  # belongs to a different figure
-                dm2 = re.search(r"\((\d+\.\d+)\)", next_line)
-                if dm2:
-                    cont = next_line[: dm2.start()].strip()
+                all_diffs = re.findall(r"\((\d+\.\d+)\)", next_line)
+                if all_diffs:
+                    cont = next_line[: next_line.index("(")].strip()
                     if cont:
                         name = name + " " + cont
-                    figures[fig_num] = (name.strip(), float(dm2.group(1)))
+                    figures[fig_num] = (name.strip(), float(all_diffs[0]))
+                    # Assign any extra difficulties to packed sub-figures missing theirs
+                    for sub_fig, diff in zip(pending_subs, all_diffs[1:]):
+                        sub_pm = next(
+                            (re.match(r"(F\d+):\s*(.*)", p.strip()) for p in parts[1:]
+                             if re.match(r"(F\d+):", p.strip()) and re.match(r"(F\d+):", p.strip()).group(1) == sub_fig),
+                            None,
+                        )
+                        sub_name = sub_pm.group(2).strip() if sub_pm else sub_fig
+                        figures[sub_fig] = (sub_name, float(diff))
                     break
 
         # Handle additional figures packed onto same line (F3:, F4: after F1:)
@@ -168,7 +205,7 @@ def _parse_figures(lines: list[str]) -> list:
                     figures[sub_fig] = (sub_name, float(sdm.group(1)))
 
     return [
-        FigureDef(number=k, name=v[0], difficulty=v[1])
+        FigureDef(number=k, name=_normalize_figure_name(v[0]), difficulty=v[1])
         for k, v in sorted(figures.items())
     ]
 
@@ -251,7 +288,7 @@ def _parse_results(lines: list[str], figures: list) -> list:
             fsm = _FIG_SCORE.search(fig_line)
             if fsm:
                 fig_num = fsm.group(1)
-                judge_scores = [float(fsm.group(k)) for k in range(2, 9)]
+                judge_scores = [float(fsm.group(k)) for k in range(2, 8) if fsm.group(k) is not None]
                 score = float(fsm.group(9))
                 penalty = float(fsm.group(10))
                 figure_results.append(
