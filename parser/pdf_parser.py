@@ -16,6 +16,36 @@ _FIGURE_NAME_ALIASES: dict[str, str] = {
 }
 
 
+def _title(s: str) -> str:
+    """Collapse whitespace and normalize casing word by word.
+
+    - all-lowercase              → capitalize        ("cup" → "Cup")
+    - ALL-CAPS ASCII             → keep              (abbreviations: FIG, SK, TJ)
+    - ALL-CAPS with diacritics   → capitalize        (HOLUBCOVÁ → Holubcová)
+    - valid title / hyphen-title → keep              (Chromíková, Nuler-Trageser)
+    - broken mixed case          → capitalize        (ChROMÍKOVÁ → Chromíková)
+    """
+    s = re.sub(r"\s+", " ", s).strip()
+
+    def _is_title(w: str) -> bool:
+        """True when every hyphen-segment starts uppercase and continues lowercase."""
+        return all(
+            seg and seg[0].isupper() and seg[1:] == seg[1:].lower()
+            for seg in w.split("-")
+        )
+
+    def _cap(w: str) -> str:
+        if w == w.lower():
+            return w.capitalize()
+        if w == w.upper():
+            return w if w.isascii() else w.capitalize()
+        if _is_title(w):
+            return w
+        return w.capitalize()  # broken mixed case
+
+    return " ".join(_cap(w) for w in s.split())
+
+
 def _normalize_figure_name(name: str) -> str:
     """Canonical figure name: alias lookup, then title case."""
     stripped = re.sub(r"\s+", " ", name).strip()
@@ -111,7 +141,7 @@ def _parse_header(lines: list[str]):
         and ln != "behind"
     ]
 
-    comp_name = clean[0] if clean else "Unknown"
+    comp_name = _title(clean[0]) if clean else "Unknown"
     date, category = "", ""
 
     if len(clean) > 1:
@@ -123,7 +153,7 @@ def _parse_header(lines: list[str]):
         if m:
             day, month, year = m.group(1).split(".")
             date = f"{year}-{month}-{day}"
-            category = m.group(2).strip().strip("-").strip()
+            category = _title(m.group(2).strip().strip("-").strip())
 
     return comp_name, date, category
 
@@ -272,13 +302,13 @@ def _parse_results(lines: list[str], figures: list) -> list:
         nm = _ENTRY_NAME.match(name_line)
         if nm:
             entry_number = int(nm.group(1))
-            name = nm.group(2).strip()
+            name = _title(nm.group(2))
 
         # Parse club from the club line
         club = ""
         cm = _CLUB_LINE.match(club_line)
         if cm:
-            club = cm.group(1).strip()
+            club = _title(cm.group(1))
 
         # Build the dynamic athlete block for figure-score scanning.
         # n_figures//2 standalone lines appear before the name line;
