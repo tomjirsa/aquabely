@@ -176,6 +176,13 @@ def _parse_figures(lines: list[str]) -> list:
                 next_line = header_lines[j]
                 if re.match(r"F\d+:", next_line):
                     continue  # belongs to a different figure
+                # Judge-panel / crew lines (e1:, Ref:, pa:) are interleaved in some
+                # PDFs — extract any embedded F{n}: definitions then skip them so
+                # they don't pollute the name or steal the wrong difficulty.
+                if re.match(r"e\d+:|Ref:|pa:", next_line):
+                    for emb in re.finditer(r"(F\d+):\s*(.*?)\((\d+\.\d+)\)", next_line):
+                        figures[emb.group(1)] = (emb.group(2).strip(), float(emb.group(3)))
+                    continue
                 all_diffs = re.findall(r"\((\d+\.\d+)\)", next_line)
                 if all_diffs:
                     cont = next_line[: next_line.index("(")].strip()
