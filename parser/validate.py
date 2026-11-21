@@ -3,6 +3,7 @@ from __future__ import annotations
 from dataclasses import dataclass, field
 from statistics import mean
 
+from parser.figure_match import UnmatchedFigureError, match_figure
 from parser.models import ParsedCompetition
 
 SCORE_TOLERANCE = 0.05
@@ -16,7 +17,13 @@ class ValidationReport:
 
 def validate(comp: ParsedCompetition) -> ValidationReport:
     rep = ValidationReport()
-    difficulty = {f.number: f.difficulty for f in comp.figures}
+    difficulty: dict[str, float] = {}
+    names = {f.number: f.name for f in comp.figures}
+    for f in comp.figures:
+        try:
+            difficulty[f.number] = match_figure(comp.level_code, f.name, f.code).coefficient
+        except UnmatchedFigureError:
+            rep.errors.append(f"unknown figure: {f.name}")
 
     for r in comp.results:
         if len(r.figure_results) != len(comp.figures):
@@ -34,7 +41,7 @@ def validate(comp: ParsedCompetition) -> ValidationReport:
                 expected = mean(trimmed) * d if trimmed else 0.0
                 if abs(fr.score - expected) > SCORE_TOLERANCE:
                     rep.warnings.append(
-                        f"{r.name} {fr.figure_number}: score {fr.score} differs from "
+                        f"{r.name} {fr.figure_number} ({names.get(fr.figure_number)}): score {fr.score} differs from "
                         f"trimmed mean(judges) x difficulty = {expected:.3f}")
 
     for a in comp.results:

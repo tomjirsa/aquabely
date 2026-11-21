@@ -18,7 +18,7 @@ def make(level="L3", name="A", club="C", judges=5):
     fr = FigureResult("F1", [5.0] * judges, 5.0, 0.0)
     r = ParsedResult(1, 1, name, club, "CZE", 2016, 50.0, 0.0, 0.0, [fr])
     return ParsedCompetition("Cup", "2026-01-01", "", level, "2014–2019", 2014, 2019,
-                             judges, [FigureDef("F1", "Ballet", None)], [r])
+                             judges, [FigureDef("F1", "Straight Ballet Leg", None, "106")], [r])
 
 
 def test_import_writes_rows(conn):
@@ -69,7 +69,7 @@ def test_nonzero_penalty_round_trips(conn):
     fr = FigureResult("F1", [5.0] * 5, 5.0, 0.5)
     r = ParsedResult(1, 1, "A", "C", "CZE", 2016, 50.0, 1.5, 0.0, [fr])
     comp = ParsedCompetition("Cup", "2026-01-01", "", "L3", "2014–2019", 2014, 2019,
-                             5, [FigureDef("F1", "Ballet", None)], [r])
+                             5, [FigureDef("F1", "Straight Ballet Leg", None, "106")], [r])
     import_competition(conn, comp, sha256="h5", filename="p.pdf")
     assert conn.execute("SELECT penalty FROM results").fetchone()[0] == 1.5
     assert conn.execute("SELECT penalty FROM figure_results").fetchone()[0] == 0.5
