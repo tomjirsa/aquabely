@@ -47,3 +47,9 @@ def test_l3_names_have_no_ascii_all_caps_words():
         for r in L3Parser().parse(path).results:
             for w in r.name.split():
                 assert not (len(w) > 1 and w.isascii() and w.isupper()), r.name
+
+
+def test_l3_figures_have_no_printed_code_and_keep_sheet_names():
+    comp = L3Parser().parse(BEGINNER)
+    assert all(f.code is None for f in comp.figures)
+    assert comp.figures[0].name == "Straight Ballet Leg"

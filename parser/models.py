@@ -8,6 +8,7 @@ class FigureDef:
     number: str
     name: str
     difficulty: float | None
+    code: str | None = None
 
 
 @dataclass(frozen=True)

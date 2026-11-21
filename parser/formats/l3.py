@@ -11,7 +11,6 @@ from parser.models import FigureDef, FigureResult, ParsedCompetition, ParsedResu
 # Map known name variants (lowercased) to a canonical title-cased name.
 # Add entries here when new PDFs introduce different wording for the same figure.
 _FIGURE_NAME_ALIASES: dict[str, str] = {
-    "straight ballet leg": "Ballet Leg Single",
     "front back layout position to surface arch position to back layout position": "Back Layout to Surface Arch to Back Layout Position",
     "from back layout position to surface arch position to back layout position": "Back Layout to Surface Arch to Back Layout Position",
     "kipnus": "Kipnus",
@@ -162,7 +161,7 @@ def _parse_figures(lines: list[str]) -> list[FigureDef]:
                     figures[sub_fig] = (sub_name, float(sdm.group(1)))
 
     return [
-        FigureDef(number=k, name=normalize_figure_name(v[0]), difficulty=v[1])
+        FigureDef(number=k, name=normalize_figure_name(v[0]), difficulty=v[1], code=None)
         for k, v in sorted(figures.items())
     ]
 

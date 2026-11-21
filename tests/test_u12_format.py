@@ -42,7 +42,7 @@ def test_u12_header_fields(comp):
     assert comp.date == "2026-11-21"
     assert comp.location == "Brno"
     assert [f.name for f in comp.figures] == [
-        "Ballet Leg Single", "Barracuda", "Front Ariana", "Tower"]
+        "Straight Ballet Leg", "Barracuda", "Front Ariana", "Tower"]
     assert len(comp.results) == 76
 
 
@@ -116,7 +116,14 @@ def test_u12_figure_names_have_no_numeric_id(comp):
         assert not f.name.startswith(":")
 
 
-def test_ballet_leg_variants_share_one_canonical_name():
+def test_ballet_leg_names_are_not_merged():
     from parser.formats.l3 import normalize_figure_name
-    assert normalize_figure_name("Straight Ballet Leg") == normalize_figure_name(
-        "Ballet Leg Single") == "Ballet Leg Single"
+    assert normalize_figure_name("Straight Ballet Leg") == "Straight Ballet Leg"
+    assert normalize_figure_name("Ballet Leg Single") == "Ballet Leg Single"
+
+
+@needs_sample
+def test_u12_figures_carry_printed_codes():
+    comp = U12Parser().parse(SAMPLE)
+    assert [f.code for f in comp.figures] == ["106", "301", "359", "348"]
+    assert [f.name for f in comp.figures][0] == "Straight Ballet Leg"

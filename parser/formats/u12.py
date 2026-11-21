@@ -109,7 +109,7 @@ def _parse_header(lines: list[str]):
         m = _FIGURE.search(ln)
         if m:
             idx = int(m.group(1))
-            figures[idx] = FigureDef(number=f"F{idx}", name=normalize_figure_name(m.group(3)), difficulty=None)
+            figures[idx] = FigureDef(number=f"F{idx}", name=normalize_figure_name(m.group(3)), difficulty=None, code=m.group(2))
     return name, date, location, judges, [figures[k] for k in sorted(figures)]
 
 
