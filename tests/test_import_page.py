@@ -2,7 +2,7 @@ from pathlib import Path
 
 from streamlit.testing.v1 import AppTest
 
-PAGE = str(Path(__file__).resolve().parent.parent / "pages" / "1_import.py")
+PAGE = str(Path(__file__).resolve().parent.parent / "views" / "1_import.py")
 
 
 def test_import_page_renders_without_exception(tmp_path, monkeypatch):
