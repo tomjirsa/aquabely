@@ -15,3 +15,9 @@ def test_page_renders_on_empty_database(page, tmp_path, monkeypatch):
     monkeypatch.setattr(db.database, "DB_PATH", tmp_path / "t.db")
     at = AppTest.from_file(str(ROOT / page), default_timeout=20).run()
     assert not at.exception
+
+
+def test_athletes_page_renders_figure_detail_with_seeded_data(seeded_app_db):
+    at = AppTest.from_file(str(ROOT / "views/3_athletes.py"), default_timeout=30).run()
+    assert not at.exception
+    assert any("Figure detail" in h.value for h in at.subheader)

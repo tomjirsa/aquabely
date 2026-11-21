@@ -1,7 +1,8 @@
 import streamlit as st
 
 from db.database import get_connection, init_schema
-from db.queries import (competition_figures, competition_judge_detail,
+from db.queries import (competition_figure_detail, competition_figures,
+                        competition_judge_detail,
                         competitions_for_level, results_for)
 from ui.theme import inject_theme
 
@@ -42,4 +43,9 @@ if not figures.empty:
         detail = competition_judge_detail(conn, cc_id)
         empty = [c for c in detail.columns if c.startswith("judge_") and detail[c].isna().all()]
         st.dataframe(detail.drop(columns=empty), hide_index=True, width="stretch")
+
+    with st.expander("Figure detail"):
+        fdetail = competition_figure_detail(conn, cc_id)
+        empty = [c for c in fdetail.columns if c.startswith("judge_") and fdetail[c].isna().all()]
+        st.dataframe(fdetail.drop(columns=empty), hide_index=True, width="stretch")
 conn.close()
