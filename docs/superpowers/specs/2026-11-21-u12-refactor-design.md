@@ -119,7 +119,7 @@ Validation (run before any write; any failure rejects the whole file):
 - Each athlete has exactly one row per figure.
 - Each figure has the same judge count as the competition's other figures.
 - Judge count matches the count printed in the PDF header, where the header states one.
-- Figure score is consistent with the average judge mark times difficulty, where difficulty exists (tolerance 0.01). This catches the dropped-judge bug below.
+- Figure score is checked against the judge marks and difficulty, where difficulty exists. The rule is not yet confirmed: average × difficulty matches F1 on the Beginner sample but not F2–F4 (ratios 1.19, 1.43, 1.30 against 1.2, 1.4, 1.3). Until the rule is confirmed, a mismatch is a warning, not a rejection. The dropped-judge bug is caught by the judge-count check, not by this one.
 - Ranks are consistent with total scores (ties allowed).
 
 Import flow:
