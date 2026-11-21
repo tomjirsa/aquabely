@@ -31,6 +31,7 @@ def build_ranking_table(rank_df: pd.DataFrame, by_year: bool) -> tuple[pd.DataFr
     base = {"competition", "date", "overall_rank", "field_size"}
     fig_cols = list(dict.fromkeys(df["figure_name"]))
     wide = wide[[c for c in wide.columns if c in base] + fig_cols]
+    wide[fig_cols] = wide[fig_cols].astype("Int64")
     return wide, fig_cols
 
 

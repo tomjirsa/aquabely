@@ -97,7 +97,7 @@ if wide is not None:
                              mode="lines+markers", name="Overall",
                              line=dict(width=3)))
     for col in fig_cols:
-        fig.add_trace(go.Scatter(x=chart["x_label"], y=chart[col], mode="lines+markers",
+        fig.add_trace(go.Scatter(x=chart["x_label"], y=chart[col].astype(float), mode="lines+markers",
                                  name=col, line=dict(width=1.5, dash="dash")))
     fig.update_yaxes(autorange="reversed", title="Rank (lower = better)")
     fig.update_xaxes(type="category", categoryorder="array", categoryarray=x_order)

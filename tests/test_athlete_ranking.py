@@ -109,3 +109,20 @@ def test_same_figure_name_shares_a_column_across_competitions():
     wide, fig_cols = build_ranking_table(pd.DataFrame(rows), by_year=False)
     assert fig_cols == ["Ballet"] and len(wide) == 2
     assert list(wide["Ballet"]) == [1, 4]
+
+
+def test_figure_rank_columns_are_nullable_integers_with_blank_for_missing(raw_rank_df):
+    extra = pd.DataFrame([
+        {"competition": "Cup B", "date": "2026-02-01",
+         "rank_overall": 4, "rank_by_year": 3,
+         "figure_name": "Ballet", "fig_rank_overall": 2, "fig_rank_by_year": 2},
+    ])
+    wide, fig_cols = build_ranking_table(pd.concat([raw_rank_df, extra]), by_year=False)
+    for col in fig_cols:
+        assert str(wide[col].dtype) == "Int64"
+    assert wide.iloc[0]["Spin"] == 5
+    assert wide.iloc[1]["Ballet"] == 2
+    assert wide.iloc[1]["Spin"] is pd.NA
+    styles = style_rank_row(wide.iloc[1], fig_cols)
+    assert styles[list(wide.columns).index("Spin")] == ""
+    assert "166534" not in styles[list(wide.columns).index("Spin")]
