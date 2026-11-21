@@ -36,7 +36,8 @@ CREATE TABLE IF NOT EXISTS figures (
     competition_category_id INTEGER NOT NULL REFERENCES competition_categories(id),
     number TEXT NOT NULL,
     name TEXT NOT NULL,
-    difficulty REAL
+    difficulty REAL,
+    catalogue_id INTEGER REFERENCES figure_catalogue(id)
 );
 
 CREATE TABLE IF NOT EXISTS athletes (

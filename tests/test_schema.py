@@ -66,3 +66,8 @@ def test_old_schema_database_is_refused():
     with pytest.raises(RuntimeError, match="old schema"):
         init_schema(c)
     c.close()
+
+
+def test_figures_link_to_catalogue(conn):
+    cols = {r[1] for r in conn.execute("PRAGMA table_info(figures)")}
+    assert "catalogue_id" in cols
