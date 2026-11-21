@@ -10,7 +10,6 @@ def conn():
     c = sqlite3.connect(":memory:")
     c.execute("PRAGMA foreign_keys = ON")
     init_schema(c)
-    c.execute("INSERT INTO categories(code, name) VALUES ('L3','Level 3'), ('U12','Under 12')")
     c.commit()  # seed data must survive the importer's rollback
     yield c
 

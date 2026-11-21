@@ -9,6 +9,8 @@ CREATE TABLE IF NOT EXISTS categories (
     name TEXT NOT NULL
 );
 
+INSERT OR IGNORE INTO categories(code, name) VALUES ('L3', 'Level 3'), ('U12', 'Under 12');
+
 CREATE TABLE IF NOT EXISTS competitions (
     id INTEGER PRIMARY KEY AUTOINCREMENT,
     name TEXT NOT NULL,

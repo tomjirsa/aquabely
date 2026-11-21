@@ -17,7 +17,6 @@ from tests.test_importer import make  # reuse builder
 def conn():
     c = sqlite3.connect(":memory:")
     init_schema(c)
-    c.execute("INSERT INTO categories(code, name) VALUES ('L3','Level 3'), ('U12','Under 12')")
     import_competition(c, make(level="L3", name="A", club="C"), sha256="q1", filename="a.pdf")
     import_competition(c, make(level="U12", name="B", club="C"), sha256="q2", filename="b.pdf")
     yield c
@@ -53,7 +52,6 @@ def _comp(date, rows, club="C"):
 def test_club_medals_places_two_and_three_and_excludes_fourth_plus():
     c = sqlite3.connect(":memory:")
     init_schema(c)
-    c.execute("INSERT INTO categories(code, name) VALUES ('L3','Level 3')")
     import_competition(c, _comp("2026-01-01", [(1, "P", 2016, 90.0), (2, "Q", 2016, 80.0),
                                                (3, "R", 2016, 70.0), (4, "S", 2016, 60.0)]),
                        sha256="m1", filename="m1.pdf")
@@ -83,7 +81,6 @@ def test_athlete_rankings_one_row_per_competition_figure(conn):
 def test_rankings_partition_by_category_and_birth_year():
     c = sqlite3.connect(":memory:")
     init_schema(c)
-    c.execute("INSERT INTO categories(code, name) VALUES ('L3','Level 3')")
     # Competition 1: Y (2015) 70, Z (2016) 60, X (2016) 50
     import_competition(c, _comp("2026-01-01", [(1, "Y", 2015, 70.0), (2, "Z", 2016, 60.0),
                                                (3, "X", 2016, 50.0)]),
@@ -143,7 +140,6 @@ def test_club_list_and_roster(conn):
 def test_club_avg_scores():
     c = sqlite3.connect(":memory:")
     init_schema(c)
-    c.execute("INSERT INTO categories(code, name) VALUES ('L3','Level 3')")
     import_competition(c, _comp("2026-01-01", [(1, "P", 2016, 90.0), (2, "Q", 2016, 70.0)]),
                        sha256="v1", filename="v1.pdf")
     import_competition(c, _comp("2026-02-01", [(1, "P", 2016, 80.0)]),
@@ -184,7 +180,6 @@ def test_athlete_figure_scores_and_judge_marks(conn):
 def test_athlete_overall_ranks_without_figure_results():
     c = sqlite3.connect(":memory:")
     init_schema(c)
-    c.execute("INSERT INTO categories(code, name) VALUES ('L3','Level 3')")
     comp = _comp("2026-01-01", [(1, "P", 2016, 90.0), (2, "Q", 2016, 70.0)])
     comp = dataclasses.replace(
         comp, figures=[],
