@@ -360,16 +360,3 @@ def test_athlete_rankings_figure_field_sizes():
     row = athlete_rankings(c, aid).iloc[0]
     assert row["fig_field_size"] == 3
     assert row["fig_field_size_by_year"] == 2
-
-
-def test_athlete_figure_row_returns_marks_coefficient_and_score(seeded_u12):
-    from db.queries import athlete_figure_row
-    aid = seeded_u12.conn.execute("SELECT id FROM athletes").fetchone()[0]
-    df = athlete_figure_row(seeded_u12.conn, aid, seeded_u12.cc_id, "Straight Ballet Leg")
-    assert len(df) == 1
-    row = df.iloc[0]
-    assert row["figure_name"] == "Straight Ballet Leg"
-    assert row["coefficient"] == 1.6
-    assert row["judge_1"] == 5.0 and pd.isna(row["judge_6"])
-    assert "figure_score" in df.columns and "figure_penalty" in df.columns
-    assert athlete_figure_row(seeded_u12.conn, aid, seeded_u12.cc_id, "Nope").empty

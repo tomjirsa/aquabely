@@ -4,9 +4,9 @@ import plotly.graph_objects as go
 import streamlit as st
 
 from db.database import get_connection, init_schema
-from db.queries import (athlete_figure_detail, athlete_figure_row, athlete_figure_scores, athlete_history, athlete_list,
+from db.queries import (athlete_figure_detail, athlete_figure_scores, athlete_history, athlete_list,
                         athlete_overall_ranks, athlete_rankings, result_judge_marks)
-from ui.components import (build_ranking_table, figure_rank_tab_table, judge_marks_table, rank_with_field_size, stat_card)
+from ui.components import (build_ranking_table, figure_rank_tab_html, judge_marks_table, rank_with_field_size, stat_card)
 from ui.theme import inject_theme, plotly_layout
 
 JUDGE_COLS = [f"judge_{i}" for i in range(1, 8)]
@@ -92,23 +92,7 @@ else:
             st.markdown("**Overall rank:** " + rank_with_field_size(
                 first["rank_by_year" if by_year else "rank_overall"],
                 first["field_size_by_year" if by_year else "field_size"]))
-            fig_table, fig_styler = figure_rank_tab_table(comp_df, by_year)
-            event = st.dataframe(
-                fig_styler, hide_index=True, width="stretch", on_select="rerun",
-                selection_mode="single-row", key=f"fig_rank_{athlete_id}_{date}_{name}_{by_year}")
-            sel = event.selection.rows
-            if sel:
-                fig_name = str(fig_table.iloc[sel[0]]["figure"])
-                hist_row = history[(history["date"] == date) & (history["competition"] == name)].iloc[0]
-                row = athlete_figure_row(conn, int(athlete_id),
-                                         int(hist_row["competition_category_id"]), fig_name)
-                st.subheader(f"{fig_name} - {name}")
-                if row.empty:
-                    st.caption("No judge marks for this figure.")
-                else:
-                    st.markdown(judge_marks_table(row))
-            else:
-                st.caption("Select a figure to see its judge marks.")
+            st.markdown(figure_rank_tab_html(comp_df, by_year), unsafe_allow_html=True)
 
 detail = athlete_figure_detail(conn, int(athlete_id))
 if not detail.empty:
