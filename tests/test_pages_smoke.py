@@ -61,3 +61,18 @@ def test_figures_page_registered_between_competitions_and_athletes():
 def test_competitions_page_figure_detail_renders_with_seeded_data(seeded_app_db):
     at = AppTest.from_file(str(ROOT / "views/2_competitions.py"), default_timeout=30).run()
     assert not at.exception
+
+
+def test_athletes_page_has_one_tab_per_competition(seeded_app_db):
+    at = AppTest.from_file(str(ROOT / "views/3_athletes.py"), default_timeout=30).run()
+    assert not at.exception
+    from db.database import get_connection
+    from db.queries import athlete_rankings
+    conn = get_connection()
+    aid = int(at.selectbox[0].value)
+    comps = set(athlete_rankings(conn, aid)["competition"])
+    conn.close()
+    assert comps
+    labels = [t.label for t in at.tabs]
+    for comp in comps:
+        assert any(comp in lbl for lbl in labels)

@@ -73,6 +73,20 @@ def ranking_display(wide: pd.DataFrame, fig_cols: list[str]):
     return shown, shown.style.apply(lambda _: styles, axis=None)
 
 
+def figure_rank_tab_table(comp_df: pd.DataFrame, by_year: bool):
+    """Per-figure rows (figure, rank, of) for one competition, rank coloured vs the overall rank."""
+    rank_col = "fig_rank_by_year" if by_year else "fig_rank_overall"
+    size_col = "fig_field_size_by_year" if by_year else "fig_field_size"
+    overall = comp_df["rank_by_year" if by_year else "rank_overall"].iloc[0]
+    df = comp_df[["figure_name", rank_col, size_col]].rename(
+        columns={"figure_name": "figure", rank_col: "rank", size_col: "of"})
+    df = df.reset_index(drop=True).astype({"rank": "Int64", "of": "Int64"})
+    styles = pd.DataFrame("", index=df.index, columns=df.columns)
+    styles["rank"] = [style_rank_row(pd.Series({"overall_rank": overall, "rank": r}), ["rank"])[1]
+                      for r in df["rank"]]
+    return df, df.style.apply(lambda _: styles, axis=None)
+
+
 JUDGE_COLS = [f"judge_{i}" for i in range(1, 8)]
 
 

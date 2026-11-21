@@ -348,3 +348,15 @@ def test_figure_queries_use_catalogue_name_so_code_101_is_one_figure():
         assert list(result_judge_marks(c, rid)["figure_name"]) == ["Ballet Leg Single"]
     for (cc,) in c.execute("SELECT id FROM competition_categories").fetchall():
         assert list(competition_figures(c, cc)["name"]) == ["Ballet Leg Single"]
+
+
+def test_athlete_rankings_figure_field_sizes():
+    c = sqlite3.connect(":memory:")
+    init_schema(c)
+    import_competition(c, _comp("2026-01-01", [(1, "Y", 2015, 70.0), (2, "Z", 2016, 60.0),
+                                               (3, "X", 2016, 50.0)]),
+                       sha256="fs1", filename="fs1.pdf")
+    aid = c.execute("SELECT id FROM athletes WHERE name='Z'").fetchone()[0]
+    row = athlete_rankings(c, aid).iloc[0]
+    assert row["fig_field_size"] == 3
+    assert row["fig_field_size_by_year"] == 2

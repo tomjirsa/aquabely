@@ -27,7 +27,9 @@ fig_ranks AS (
         RANK() OVER (PARTITION BY fr.figure_id
                      ORDER BY fr.score DESC) AS fig_rank_overall,
         RANK() OVER (PARTITION BY fr.figure_id, a.year_of_birth
-                     ORDER BY fr.score DESC) AS fig_rank_by_year
+                     ORDER BY fr.score DESC) AS fig_rank_by_year,
+        COUNT(*) OVER (PARTITION BY fr.figure_id) AS fig_field_size,
+        COUNT(*) OVER (PARTITION BY fr.figure_id, a.year_of_birth) AS fig_field_size_by_year
     FROM figure_results fr
     JOIN figures f ON f.id = fr.figure_id
     LEFT JOIN figure_catalogue fc ON fc.id = f.catalogue_id
@@ -37,7 +39,8 @@ fig_ranks AS (
 SELECT
     ar.competition, ar.date, ar.rank_overall, ar.rank_by_year,
     ar.field_size, ar.field_size_by_year,
-    fr.figure_number, fr.figure_name, fr.fig_rank_overall, fr.fig_rank_by_year
+    fr.figure_number, fr.figure_name, fr.fig_rank_overall, fr.fig_rank_by_year,
+    fr.fig_field_size, fr.fig_field_size_by_year
 FROM all_ranks ar
 JOIN fig_ranks fr ON fr.result_id = ar.result_id
 WHERE ar.athlete_id = ?

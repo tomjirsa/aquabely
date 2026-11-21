@@ -6,8 +6,7 @@ import streamlit as st
 from db.database import get_connection, init_schema
 from db.queries import (athlete_figure_detail, athlete_figure_scores, athlete_history, athlete_list,
                         athlete_overall_ranks, athlete_rankings, result_judge_marks)
-from ui.components import (build_ranking_table, judge_marks_table, rank_with_field_size, ranking_display,
-                           stat_card)
+from ui.components import (build_ranking_table, figure_rank_tab_table, judge_marks_table, rank_with_field_size, stat_card)
 from ui.theme import inject_theme, plotly_layout
 
 JUDGE_COLS = [f"judge_{i}" for i in range(1, 8)]
@@ -84,8 +83,17 @@ if rank_df.empty:
 else:
     wide, fig_cols = build_ranking_table(rank_df, by_year)
     st.subheader("Figure ranks")
-    shown, styler = ranking_display(wide, fig_cols)
-    st.dataframe(styler, hide_index=True, width="stretch")
+    comps = list(dict.fromkeys(zip(rank_df["date"], rank_df["competition"])))
+    tabs = st.tabs([f"{name} ({date})" for date, name in comps])
+    for tab, (date, name) in zip(tabs, comps):
+        comp_df = rank_df[(rank_df["date"] == date) & (rank_df["competition"] == name)]
+        with tab:
+            first = comp_df.iloc[0]
+            st.markdown("**Overall rank:** " + rank_with_field_size(
+                first["rank_by_year" if by_year else "rank_overall"],
+                first["field_size_by_year" if by_year else "field_size"]))
+            table, styler = figure_rank_tab_table(comp_df, by_year)
+            st.dataframe(styler, hide_index=True, width="stretch")
 
 detail = athlete_figure_detail(conn, int(athlete_id))
 if not detail.empty:
