@@ -3,6 +3,7 @@ from __future__ import annotations
 import sqlite3
 from datetime import datetime, timezone
 
+from parser.figure_match import UnmatchedFigureError, match_figure
 from parser.models import ParsedCompetition
 from parser.validate import validate
 
@@ -40,6 +41,14 @@ def import_competition(conn: sqlite3.Connection, comp: ParsedCompetition,
         _log(conn, filename, sha256, "rejected", "\n".join(report.errors))
         raise ValidationFailed(report.errors)
 
+    matched = {}
+    try:
+        for f in comp.figures:
+            matched[f.number] = match_figure(comp.level_code, f.name, f.code)
+    except UnmatchedFigureError as e:
+        _log(conn, filename, sha256, "rejected", str(e))
+        raise ValidationFailed([str(e)])
+
     cat = conn.execute("SELECT id FROM categories WHERE code=?", (comp.level_code,)).fetchone()
     if cat is None:
         msg = f"unknown category code: {comp.level_code}"
@@ -63,9 +72,15 @@ def import_competition(conn: sqlite3.Connection, comp: ParsedCompetition,
 
             figure_ids: dict[str, int] = {}
             for f in comp.figures:
+                entry = matched[f.number]
+                cat_row = conn.execute(
+                    "SELECT id FROM figure_catalogue WHERE level=? AND code IS ? AND name=?",
+                    (entry.level, entry.code, entry.name)).fetchone()
                 cur = conn.execute(
-                    "INSERT INTO figures(competition_category_id, number, name, difficulty) "
-                    "VALUES (?,?,?,?)", (cc_id, f.number, f.name, f.difficulty))
+                    "INSERT INTO figures(competition_category_id, number, name, difficulty, "
+                    "catalogue_id) VALUES (?,?,?,?,?)",
+                    (cc_id, f.number, f.name, entry.coefficient,
+                     cat_row[0] if cat_row else None))
                 figure_ids[f.number] = cur.lastrowid
 
             for r in comp.results:

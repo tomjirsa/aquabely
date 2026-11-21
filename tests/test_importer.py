@@ -1,3 +1,4 @@
+import dataclasses
 import sqlite3
 import pytest
 from db.database import init_schema
@@ -74,3 +75,39 @@ def test_nonzero_penalty_round_trips(conn):
     assert conn.execute("SELECT penalty FROM results").fetchone()[0] == 1.5
     assert conn.execute("SELECT penalty FROM figure_results").fetchone()[0] == 0.5
     assert conn.execute("SELECT total_score FROM results").fetchone()[0] == 50.0
+
+
+def _comp_with_figure(level, code, name, sha_unused=None):
+    return dataclasses.replace(make(level=level), figures=[FigureDef("F1", name, None, code)])
+
+
+def _u12_comp_with_figure(code, name):
+    return _comp_with_figure("U12", code, name)
+
+
+def _l3_comp_with_figure(name, code=None):
+    return _comp_with_figure("L3", code, name)
+
+
+def test_import_links_figures_to_catalogue_and_stores_coefficient(conn):
+    comp = _u12_comp_with_figure(code="106", name="Straight Ballet Leg")
+    import_competition(conn, comp, sha256="cat1", filename="u12.pdf")
+    row = conn.execute("SELECT f.difficulty, c.code FROM figures f JOIN figure_catalogue c ON c.id = f.catalogue_id").fetchone()
+    assert row == (1.6, "106")
+
+
+def test_codeless_l3_figure_links_to_catalogue(conn):
+    comp = _l3_comp_with_figure(name="Walkover Front Variant")
+    import_competition(conn, comp, sha256="cat3", filename="l3.pdf")
+    row = conn.execute("SELECT f.difficulty, c.name FROM figures f JOIN figure_catalogue c ON c.id = f.catalogue_id").fetchone()
+    assert row == (1.3, "Walkover Front Variant")
+
+
+def test_unmatched_figure_rejects_import_and_writes_nothing(conn):
+    comp = _l3_comp_with_figure(name="Mystery Spin")
+    with pytest.raises(ValidationFailed):
+        import_competition(conn, comp, sha256="cat2", filename="bad.pdf")
+    assert conn.execute("SELECT COUNT(*) FROM figures").fetchone()[0] == 0
+    assert conn.execute("SELECT COUNT(*) FROM competitions").fetchone()[0] == 0
+    assert conn.execute("SELECT COUNT(*) FROM imports").fetchone()[0] == 1
+    assert conn.execute("SELECT status FROM imports").fetchone()[0] == "rejected"
