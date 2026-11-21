@@ -56,3 +56,8 @@ def test_figures_page_registered_between_competitions_and_athletes():
     assert all(p >= 0 for p in positions)
     assert positions == sorted(positions)
     assert 'st.Page("views/5_figures.py", title="Figures"' in text
+
+
+def test_competitions_page_figure_detail_renders_with_seeded_data(seeded_app_db):
+    at = AppTest.from_file(str(ROOT / "views/2_competitions.py"), default_timeout=30).run()
+    assert not at.exception

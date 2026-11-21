@@ -6,7 +6,7 @@ import streamlit as st
 from db.database import get_connection, init_schema
 from db.queries import (athlete_figure_detail, athlete_figure_scores, athlete_history, athlete_list,
                         athlete_overall_ranks, athlete_rankings, result_judge_marks)
-from ui.components import (build_ranking_table, rank_with_field_size, ranking_display,
+from ui.components import (build_ranking_table, judge_marks_table, rank_with_field_size, ranking_display,
                            stat_card)
 from ui.theme import inject_theme, plotly_layout
 
@@ -90,8 +90,7 @@ else:
 detail = athlete_figure_detail(conn, int(athlete_id))
 if not detail.empty:
     st.subheader("Figure detail")
-    empty = [c for c in JUDGE_COLS if detail[c].isna().all()]
-    st.dataframe(detail.drop(columns=empty), hide_index=True, width="stretch")
+    st.markdown(judge_marks_table(detail))
 
 if wide is not None:
     st.subheader("Positions Over Time")

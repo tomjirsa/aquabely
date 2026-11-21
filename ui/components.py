@@ -71,3 +71,48 @@ def ranking_display(wide: pd.DataFrame, fig_cols: list[str]):
     shown = shown.drop(columns=["field_size"], errors="ignore")
     styles = styles.drop(columns=["field_size"], errors="ignore")
     return shown, shown.style.apply(lambda _: styles, axis=None)
+
+
+JUDGE_COLS = [f"judge_{i}" for i in range(1, 8)]
+
+
+def trimmed_flags(scores: list[float | None]) -> tuple[list[bool], float | None]:
+    """Flag the single lowest and single highest mark as struck; return the trimmed mean."""
+    present = [i for i, s in enumerate(scores) if s is not None and s == s]
+    flags = [False] * len(scores)
+    if len(present) < 3:
+        return flags, None
+    lo = min(present, key=lambda i: (scores[i], i))
+    hi = max((i for i in present if i != lo), key=lambda i: (scores[i], -i))
+    # With ties the first max must differ from lo; otherwise pick the first max among the rest.
+    flags[lo] = flags[hi] = True
+    kept = [scores[i] for i in present if not flags[i]]
+    return flags, sum(kept) / len(kept)
+
+
+def judges_markdown(scores: list[float | None]) -> str:
+    flags, avg = trimmed_flags(scores)
+    parts = [f"~~{s}~~" if flags[i] else str(s)
+             for i, s in enumerate(scores) if s is not None and s == s]
+    text = " ".join(parts)
+    if avg is not None:
+        text += f" → avg {avg:.2f}"
+    return text
+
+
+def judge_marks_table(df: pd.DataFrame, label: str = "judge marks") -> str:
+    """Markdown table of df without judge columns plus one struck-through marks column."""
+    others = [c for c in df.columns if c not in JUDGE_COLS]
+    jcols = [c for c in JUDGE_COLS if c in df.columns]
+
+    def cell(v) -> str:
+        if v is None or (isinstance(v, float) and v != v):
+            return ""
+        return str(v).replace("|", "\|")
+
+    lines = ["| " + " | ".join([*others, label]) + " |",
+             "|" + "---|" * (len(others) + 1)]
+    for _, row in df.iterrows():
+        marks = judges_markdown([None if row[c] != row[c] else row[c] for c in jcols])
+        lines.append("| " + " | ".join([*(cell(row[c]) for c in others), marks]) + " |")
+    return "\n".join(lines)
