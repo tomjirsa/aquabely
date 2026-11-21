@@ -35,7 +35,7 @@ Every row must give exactly three runs: rank, club, ``NAME Given (YYYY)``.
 Any other count raises ``ValueError``. All 76 sample rows split this way.
 
 Names and clubs are stored exactly as extracted (no case or diacritic
-changes); corrections are applied later from the name-correction table.
+changes).
 """
 from __future__ import annotations
 
