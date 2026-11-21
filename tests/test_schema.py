@@ -58,3 +58,11 @@ def test_init_schema_is_idempotent():
     init_schema(c)
     assert c.execute("SELECT COUNT(*) FROM categories").fetchone()[0] == 2
     c.close()
+
+
+def test_old_schema_database_is_refused():
+    c = sqlite3.connect(":memory:")
+    c.execute("CREATE TABLE categories(id INTEGER PRIMARY KEY, name TEXT)")
+    with pytest.raises(RuntimeError, match="old schema"):
+        init_schema(c)
+    c.close()

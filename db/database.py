@@ -14,4 +14,9 @@ def get_connection() -> sqlite3.Connection:
 
 
 def init_schema(conn: sqlite3.Connection) -> None:
+    cols = [r[1] for r in conn.execute("PRAGMA table_info(categories)")]
+    if cols and "code" not in cols:
+        raise RuntimeError(
+            "Database uses the old schema. Delete or rename the database file "
+            "(see docs/deployment.md) and restart.")
     conn.executescript(_SCHEMA.read_text(encoding="utf-8"))
