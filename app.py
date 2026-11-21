@@ -6,6 +6,7 @@ st.markdown('<style>section[data-testid="stSidebar"] a[href$="import"]{display:n
 pg = st.navigation([
     st.Page("views/0_home.py", title="Home", icon="🏠", default=True),
     st.Page("views/2_competitions.py", title="Competitions", icon="📋"),
+    st.Page("views/5_figures.py", title="Figures", icon="🩰"),
     st.Page("views/3_athletes.py", title="Athletes", icon="🏊"),
     st.Page("views/4_clubs.py", title="Clubs", icon="🏆"),
     st.Page("views/1_import.py", title="Import", icon="📥", url_path="import"),

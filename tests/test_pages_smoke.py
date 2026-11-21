@@ -29,3 +29,30 @@ def test_figures_page_renders_on_empty_database(tmp_path, monkeypatch):
     monkeypatch.setattr(db.database, "DB_PATH", tmp_path / "f.db")
     at = AppTest.from_file(str(ROOT / "views/5_figures.py"), default_timeout=20).run()
     assert not at.exception
+
+
+def test_figures_page_content_with_seeded_data(seeded_app_db):
+    at = AppTest.from_file(str(ROOT / "views/5_figures.py"), default_timeout=30).run()
+    assert not at.exception
+    assert list(at.radio[0].options) == ["L3", "U12"]
+    df = at.dataframe[0].value
+    assert len(df) == 4
+    assert "101" in set(df["code"].astype(str))
+    for col in ["code", "name", "coefficient", "description_cs", "performances", "competitions"]:
+        assert col in df.columns
+    assert any("No performances recorded" in i.value for i in at.info)
+
+    at.radio[0].set_value("U12").run()
+    assert not at.exception
+    df = at.dataframe[0].value
+    assert len(df) == 8
+    assert "106" in set(df["code"].astype(str))
+
+
+def test_figures_page_registered_between_competitions_and_athletes():
+    text = (ROOT / "app.py").read_text(encoding="utf-8")
+    titles = ["Competitions", "Figures", "Athletes"]
+    positions = [text.find(f'title="{t}"') for t in titles]
+    assert all(p >= 0 for p in positions)
+    assert positions == sorted(positions)
+    assert 'st.Page("views/5_figures.py", title="Figures"' in text
