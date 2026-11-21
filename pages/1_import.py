@@ -11,7 +11,8 @@ from parser.registry import (PARSERS, AmbiguousFormatError, UnknownFormatError,
                              detect_format, get_parser)
 from parser.validate import validate
 from ui.import_helpers import (FORMAT_PLACEHOLDER, format_options,
-                               needs_format_choice, write_if_changed)
+                               needs_format_choice, upload_path,
+                               write_if_changed)
 from ui.theme import inject_theme
 
 INBOX = Path(os.environ.get("AQUABELY_INBOX", Path(__file__).parent.parent / "data"))
@@ -43,7 +44,7 @@ uploaded = st.file_uploader("Upload PDF", type="pdf", accept_multiple_files=True
 for uf in (uploaded or []):
     data = uf.getvalue()
     sha = _sha256(data)
-    dest = INBOX / uf.name
+    dest = upload_path(INBOX, data)
     write_if_changed(dest, data)
 
     st.subheader(uf.name)

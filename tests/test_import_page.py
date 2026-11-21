@@ -35,3 +35,15 @@ def test_write_if_changed_skips_identical_bytes(tmp_path):
 def test_page_has_no_path_keyed_cache():
     src = (Path(PAGE)).read_text(encoding="utf-8")
     assert "cache_data" not in src and "cache_resource" not in src
+
+
+def test_upload_path_ignores_name_and_stays_in_inbox(tmp_path):
+    from ui.import_helpers import upload_path
+
+    data = b"%PDF-bytes"
+    p = upload_path(tmp_path, data)
+    assert p.parent == tmp_path
+    assert p.suffix == ".pdf"
+    # the path depends only on the content, never on an uploaded name
+    assert upload_path(tmp_path, data) == p
+    assert upload_path(tmp_path, b"other") != p

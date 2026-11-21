@@ -1,3 +1,4 @@
+import hashlib
 from pathlib import Path
 
 FORMAT_PLACEHOLDER = "— choose a format —"
@@ -19,3 +20,8 @@ def write_if_changed(dest: Path, data: bytes) -> bool:
         return False
     dest.write_bytes(data)
     return True
+
+
+def upload_path(inbox: Path, data: bytes) -> Path:
+    """Inbox path for uploaded bytes: named by content hash, never by user input."""
+    return inbox / f"{hashlib.sha256(data).hexdigest()}.pdf"
