@@ -111,3 +111,14 @@ def test_unmatched_figure_rejects_import_and_writes_nothing(conn):
     assert conn.execute("SELECT COUNT(*) FROM competitions").fetchone()[0] == 0
     assert conn.execute("SELECT COUNT(*) FROM imports").fetchone()[0] == 1
     assert conn.execute("SELECT status FROM imports").fetchone()[0] == "rejected"
+
+
+def test_missing_catalogue_row_rejects_import_and_writes_nothing(conn):
+    conn.execute("DELETE FROM figure_catalogue WHERE level='U12' AND code='106'")
+    conn.commit()
+    comp = _u12_comp_with_figure(code="106", name="Straight Ballet Leg")
+    with pytest.raises(ValidationFailed):
+        import_competition(conn, comp, sha256="cat9", filename="miss.pdf")
+    assert conn.execute("SELECT COUNT(*) FROM figures").fetchone()[0] == 0
+    assert conn.execute("SELECT COUNT(*) FROM imports WHERE status='rejected'").fetchone()[0] == 1
+    assert conn.execute("SELECT COUNT(*) FROM imports").fetchone()[0] == 1

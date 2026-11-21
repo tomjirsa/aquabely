@@ -76,11 +76,13 @@ def import_competition(conn: sqlite3.Connection, comp: ParsedCompetition,
                 cat_row = conn.execute(
                     "SELECT id FROM figure_catalogue WHERE level=? AND code IS ? AND name=?",
                     (entry.level, entry.code, entry.name)).fetchone()
+                if cat_row is None:
+                    raise ValidationFailed(
+                        [f"catalogue row missing for {entry.level} {entry.code} {entry.name}"])
                 cur = conn.execute(
                     "INSERT INTO figures(competition_category_id, number, name, difficulty, "
                     "catalogue_id) VALUES (?,?,?,?,?)",
-                    (cc_id, f.number, f.name, entry.coefficient,
-                     cat_row[0] if cat_row else None))
+                    (cc_id, f.number, f.name, entry.coefficient, cat_row[0]))
                 figure_ids[f.number] = cur.lastrowid
 
             for r in comp.results:

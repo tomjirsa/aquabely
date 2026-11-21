@@ -17,3 +17,13 @@ def test_seed_is_idempotent():
     init_schema(conn)
     init_schema(conn)
     assert conn.execute("SELECT COUNT(*) FROM figure_catalogue").fetchone()[0] == len(CATALOGUE)
+
+
+def test_seeded_rows_equal_catalogue():
+    conn = sqlite3.connect(":memory:")
+    init_schema(conn)
+    rows = conn.execute(
+        "SELECT code, level, name, coefficient, description_cs FROM figure_catalogue").fetchall()
+    key = lambda t: (t[0] or "", t[1], t[2])
+    expected = [(e.code, e.level, e.name, e.coefficient, e.description_cs) for e in CATALOGUE]
+    assert sorted(rows, key=key) == sorted(expected, key=key)
