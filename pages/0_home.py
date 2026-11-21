@@ -1,7 +1,7 @@
 import streamlit as st
 
 from db.database import get_connection, init_schema
-from db.queries import competitions_for_level, results_for
+from db.queries import competitions_for_level, level_athlete_count, results_for
 from ui.components import stat_card
 from ui.theme import inject_theme
 
@@ -19,12 +19,7 @@ def level_summary(level):
     if comps.empty:
         return None
     latest = comps.sort_values(["date", "competition_category_id"]).iloc[-1]
-    n_athletes = conn.execute(
-        """SELECT COUNT(DISTINCT r.athlete_id)
-           FROM results r
-           JOIN competition_categories cc ON cc.id = r.competition_category_id
-           JOIN categories cat ON cat.id = cc.category_id
-           WHERE cat.code = ?""", (level,)).fetchone()[0]
+    n_athletes = level_athlete_count(conn, level)
     res = results_for(conn, int(latest["competition_category_id"]))
     top = None
     ranked = res.dropna(subset=["rank"])
@@ -32,7 +27,8 @@ def level_summary(level):
         row = ranked.sort_values("rank").iloc[0]
         top = f"{row['name']} ({row['total_score']:.2f})"
     return {"competition": f"{latest['competition']} ({latest['date']})",
-            "athletes": str(n_athletes), "top": top or "n/a"}
+            "athletes": str(n_athletes), "top": top or "n/a",
+            "age_group": str(latest["age_group_label"])}
 
 
 summaries = {lvl: level_summary(lvl) for lvl in LEVELS}
@@ -52,5 +48,5 @@ else:
         with c2:
             stat_card("Athletes", s["athletes"])
         with c3:
-            stat_card("Top placing", s["top"])
+            stat_card("Top placing (" + s["age_group"] + ")", s["top"])
 conn.close()

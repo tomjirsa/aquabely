@@ -1,11 +1,15 @@
 import pandas as pd
+import plotly.express as px
 import plotly.graph_objects as go
 import streamlit as st
 
 from db.database import get_connection, init_schema
-from db.queries import athlete_rankings
+from db.queries import (athlete_figure_scores, athlete_history, athlete_list,
+                        athlete_overall_ranks, athlete_rankings, result_judge_marks)
 from ui.components import build_ranking_table, stat_card, style_rank_row
 from ui.theme import inject_theme, plotly_layout
+
+JUDGE_COLS = [f"judge_{i}" for i in range(1, 8)]
 
 inject_theme()
 st.title("Athletes")
@@ -13,9 +17,7 @@ st.title("Athletes")
 conn = get_connection()
 init_schema(conn)
 
-athletes = pd.read_sql_query(
-    """SELECT a.id, a.name, a.year_of_birth, a.country, c.name AS club
-       FROM athletes a JOIN clubs c ON c.id = a.club_id ORDER BY a.name""", conn)
+athletes = athlete_list(conn)
 if athletes.empty:
     st.info("No athletes yet. Use the Import page to add results.")
     conn.close()
@@ -44,34 +46,112 @@ with c3:
     stat_card("Born", "n/a" if pd.isna(yob) else str(int(yob)))
 
 st.subheader("History")
-history = pd.read_sql_query(
-    """SELECT cat.code AS level, c.name AS competition, c.date AS date,
-              cc.age_group_label AS age_group, r.rank AS rank,
-              r.total_score AS total_score
-       FROM results r
-       JOIN competition_categories cc ON cc.id = r.competition_category_id
-       JOIN competitions c ON c.id = cc.competition_id
-       JOIN categories cat ON cat.id = cc.category_id
-       WHERE r.athlete_id = ? ORDER BY c.date""", conn, params=(int(athlete_id),))
-st.dataframe(history, hide_index=True, width="stretch")
+history = athlete_history(conn, int(athlete_id))
+st.dataframe(history.drop(columns=["result_id", "competition_category_id"]),
+             hide_index=True, width="stretch")
+
+
+def _legend_below(fig):
+    fig.update_layout(legend=dict(orientation="h", yanchor="top", y=-0.3,
+                                  xanchor="center", x=0.5))
+    return fig
+
+
+def _x_label(df):
+    return df["competition"] + "<br>" + df["date"]
+
 
 rank_df = athlete_rankings(conn, int(athlete_id))
+by_year = st.toggle("Rank within birth year", value=False)
+wide = None
+fig_cols = []
 if rank_df.empty:
-    st.caption("No figure rankings available for this athlete.")
+    overall = athlete_overall_ranks(conn, int(athlete_id))
+    if overall.empty:
+        st.caption("No rankings available for this athlete.")
+    else:
+        st.caption("No figure rankings available; showing overall rank only.")
+        wide = overall.rename(
+            columns={"rank_by_year" if by_year else "rank_overall": "overall_rank"})
 else:
-    by_year = st.toggle("Rank within birth year", value=False)
     wide, fig_cols = build_ranking_table(rank_df, by_year)
     st.subheader("Figure ranks")
     st.dataframe(wide.style.apply(style_rank_row, fig_cols=fig_cols, axis=1),
                  hide_index=True, width="stretch")
 
-    st.subheader("Rank over time")
+if wide is not None:
+    st.subheader("Positions Over Time")
+    chart = wide.copy()
+    chart["x_label"] = _x_label(chart)
+    x_order = list(dict.fromkeys(chart.sort_values("date")["x_label"]))
     fig = go.Figure()
-    fig.add_trace(go.Scatter(x=wide["date"], y=wide["overall_rank"],
-                             mode="lines+markers", name="Overall"))
+    fig.add_trace(go.Scatter(x=chart["x_label"], y=chart["overall_rank"],
+                             mode="lines+markers", name="Overall",
+                             line=dict(width=3)))
     for col in fig_cols:
-        fig.add_trace(go.Scatter(x=wide["date"], y=wide[col], mode="lines+markers",
-                                 name=col, visible="legendonly"))
-    fig.update_yaxes(autorange="reversed", title="Rank")
+        fig.add_trace(go.Scatter(x=chart["x_label"], y=chart[col], mode="lines+markers",
+                                 name=col, line=dict(width=1.5, dash="dash")))
+    fig.update_yaxes(autorange="reversed", title="Rank (lower = better)")
+    fig.update_xaxes(type="category", categoryorder="array", categoryarray=x_order)
+    _legend_below(fig)
     st.plotly_chart(plotly_layout(fig), width="stretch")
+
+st.subheader("Scores")
+if history.empty:
+    st.info("No results found for this athlete.")
+else:
+    hist = history.sort_values("date").copy()
+    hist["x_label"] = _x_label(hist)
+    fig1 = px.line(hist, x="x_label", y="total_score", markers=True,
+                   title="Total score over time",
+                   labels={"total_score": "Score", "x_label": ""},
+                   category_orders={"x_label": list(dict.fromkeys(hist["x_label"]))})
+    st.plotly_chart(plotly_layout(_legend_below(fig1)), width="stretch")
+
+    fig_df = athlete_figure_scores(conn, int(athlete_id))
+    if not fig_df.empty:
+        fig_df = fig_df.sort_values("date")
+        fig_df["figure_label"] = fig_df["figure"] + ": " + fig_df["figure_name"]
+        fig_df["x_label"] = _x_label(fig_df)
+        fig_order = sorted(fig_df["figure_label"].unique(),
+                           key=lambda x: int(x[1:x.index(":")]))
+        comp_order = list(dict.fromkeys(fig_df["competition"]))
+        x_order = list(dict.fromkeys(fig_df["x_label"]))
+
+        fig2 = px.line(fig_df, x="x_label", y="figure_score", color="figure_label",
+                       markers=True, title="Figure scores over time",
+                       labels={"figure_score": "Score", "x_label": "", "figure_label": "Figure"},
+                       category_orders={"figure_label": fig_order, "x_label": x_order})
+        st.plotly_chart(plotly_layout(_legend_below(fig2)), width="stretch")
+
+        fig3 = px.bar(fig_df, x="competition", y="figure_score", color="figure_label",
+                      barmode="group", title="Figure scores per competition",
+                      labels={"figure_label": "Figure", "figure_score": "Score"},
+                      category_orders={"figure_label": fig_order, "competition": comp_order})
+        st.plotly_chart(plotly_layout(_legend_below(fig3)), width="stretch")
+
+        st.subheader("Judge marks per figure")
+        opts = {int(r.result_id): f"{r.competition} ({r.age_group}, {r.date})"
+                for r in history.itertuples()}
+        result_id = st.selectbox("Competition", list(opts), format_func=opts.get,
+                                 key="judge_marks_comp")
+        marks = result_judge_marks(conn, int(result_id))
+        marks = marks.melt(
+            id_vars=["figure", "figure_name"],
+            value_vars=[c for c in JUDGE_COLS if marks[c].notna().any()],
+            var_name="judge", value_name="mark").dropna(subset=["mark"])
+        if marks.empty:
+            st.caption("No judge marks for this competition.")
+        else:
+            marks["figure_label"] = marks["figure"] + ": " + marks["figure_name"]
+            marks["judge"] = marks["judge"].str.replace("judge_", "J", regex=False)
+            fig4 = px.bar(
+                marks, x="figure_label", y="mark", color="judge", barmode="group",
+                title=f"Judge marks - {opts[int(result_id)]}",
+                labels={"figure_label": "Figure", "mark": "Mark", "judge": "Judge"},
+                category_orders={"figure_label": sorted(
+                    marks["figure_label"].unique(),
+                    key=lambda x: int(x[1:x.index(":")]))})
+            fig4.update_layout(yaxis_range=[0, 10])
+            st.plotly_chart(plotly_layout(_legend_below(fig4)), width="stretch")
 conn.close()

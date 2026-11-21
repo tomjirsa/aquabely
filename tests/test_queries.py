@@ -1,8 +1,14 @@
+import dataclasses
 import sqlite3
+import pandas as pd
 import pytest
 from db.database import init_schema
 from db.importer import import_competition
-from db.queries import competitions_for_level, results_for, club_medals, athlete_rankings
+from db.queries import (competitions_for_level, results_for, club_medals, athlete_rankings,
+                        athlete_list, athlete_history, athlete_overall_ranks,
+                        athlete_figure_scores, result_judge_marks, level_athlete_count,
+                        club_list, club_roster, club_avg_scores, competition_figures,
+                        competition_judge_detail)
 from parser.models import FigureDef, FigureResult, ParsedCompetition, ParsedResult
 from tests.test_importer import make  # reuse builder
 
@@ -98,3 +104,95 @@ def test_rankings_partition_by_category_and_birth_year():
     assert ranks("Y") == [(1, 1, 1, 1), (3, 1, 3, 1)]
     assert ranks("Z") == [(2, 1, 2, 1), (2, 2, 2, 2)]
     assert ranks("X") == [(3, 2, 3, 2), (1, 1, 1, 1)]
+
+
+def _aid(conn, name):
+    return conn.execute("SELECT id FROM athletes WHERE name=?", (name,)).fetchone()[0]
+
+
+def test_athlete_list(conn):
+    df = athlete_list(conn)
+    assert list(df["name"]) == ["A", "B"]
+    row = df.iloc[0]
+    assert row["club"] == "C" and row["country"] == "CZE" and row["year_of_birth"] == 2016
+
+
+def test_athlete_history(conn):
+    df = athlete_history(conn, _aid(conn, "A"))
+    assert len(df) == 1
+    row = df.iloc[0]
+    assert (row["level"], row["competition"], row["date"]) == ("L3", "Cup", "2026-01-01")
+    assert row["age_group"] == "2014–2019"
+    assert row["rank"] == 1 and row["total_score"] == 50.0
+    assert row["result_id"] > 0 and row["competition_category_id"] > 0
+
+
+def test_level_athlete_count(conn):
+    assert level_athlete_count(conn, "L3") == 1
+    assert level_athlete_count(conn, "U12") == 1
+
+
+def test_club_list_and_roster(conn):
+    clubs = club_list(conn)
+    assert list(clubs["name"]) == ["C"]
+    df = club_roster(conn, int(clubs.iloc[0]["id"]))
+    assert list(df["name"]) == ["A", "B"]
+    assert list(df["year_of_birth"]) == [2016, 2016] and list(df["country"]) == ["CZE", "CZE"]
+
+
+def test_club_avg_scores():
+    c = sqlite3.connect(":memory:")
+    init_schema(c)
+    c.execute("INSERT INTO categories(code, name) VALUES ('L3','Level 3')")
+    import_competition(c, _comp("2026-01-01", [(1, "P", 2016, 90.0), (2, "Q", 2016, 70.0)]),
+                       sha256="v1", filename="v1.pdf")
+    import_competition(c, _comp("2026-02-01", [(1, "P", 2016, 80.0)]),
+                       sha256="v2", filename="v2.pdf")
+    club_id = c.execute("SELECT id FROM clubs WHERE name='C'").fetchone()[0]
+    df = club_avg_scores(c, club_id)
+    assert list(df["date"]) == ["2026-01-01", "2026-02-01"]
+    assert list(df["avg_total"]) == [80.0, 80.0]
+
+
+def test_competition_figures(conn):
+    cc = int(competitions_for_level(conn, "L3").iloc[0]["competition_category_id"])
+    df = competition_figures(conn, cc)
+    assert list(df["number"]) == ["F1"] and list(df["name"]) == ["Ballet"]
+
+
+def test_competition_judge_detail(conn):
+    cc = int(competitions_for_level(conn, "L3").iloc[0]["competition_category_id"])
+    df = competition_judge_detail(conn, cc)
+    assert len(df) == 1
+    row = df.iloc[0]
+    assert row["athlete"] == "A" and row["figure"] == "F1" and row["score"] == 5.0
+    assert row["judge_5"] == 5.0 and df["judge_6"].isna().all()
+
+
+def test_athlete_figure_scores_and_judge_marks(conn):
+    aid = _aid(conn, "A")
+    df = athlete_figure_scores(conn, aid)
+    assert len(df) == 1
+    assert (df.iloc[0]["figure"], df.iloc[0]["figure_name"], df.iloc[0]["figure_score"]) == \
+        ("F1", "Ballet", 5.0)
+    rid = int(athlete_history(conn, aid).iloc[0]["result_id"])
+    marks = result_judge_marks(conn, rid)
+    assert len(marks) == 1 and marks.iloc[0]["figure"] == "F1"
+    assert marks.iloc[0]["judge_1"] == 5.0 and pd.isna(marks.iloc[0]["judge_7"])
+
+
+def test_athlete_overall_ranks_without_figure_results():
+    c = sqlite3.connect(":memory:")
+    init_schema(c)
+    c.execute("INSERT INTO categories(code, name) VALUES ('L3','Level 3')")
+    comp = _comp("2026-01-01", [(1, "P", 2016, 90.0), (2, "Q", 2016, 70.0)])
+    comp = dataclasses.replace(
+        comp, figures=[],
+        results=[dataclasses.replace(r, figure_results=[]) for r in comp.results])
+    import_competition(c, comp, sha256="nf", filename="nf.pdf")
+    q = c.execute("SELECT id FROM athletes WHERE name='Q'").fetchone()[0]
+    assert athlete_rankings(c, q).empty
+    df = athlete_overall_ranks(c, q)
+    assert len(df) == 1
+    assert df.iloc[0]["rank_overall"] == 2 and df.iloc[0]["rank_by_year"] == 2
+    assert df.iloc[0]["date"] == "2026-01-01"

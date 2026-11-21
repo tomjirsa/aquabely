@@ -10,5 +10,8 @@ PAGES = ["pages/0_home.py", "pages/2_competitions.py", "pages/3_athletes.py", "p
 @pytest.mark.parametrize("page", PAGES)
 def test_page_renders_on_empty_database(page, tmp_path, monkeypatch):
     monkeypatch.setenv("AQUABELY_DB", str(tmp_path / "t.db"))
+    # DB_PATH is read at import time; another test may have imported db.database already.
+    import db.database
+    monkeypatch.setattr(db.database, "DB_PATH", tmp_path / "t.db")
     at = AppTest.from_file(str(ROOT / page), default_timeout=20).run()
     assert not at.exception

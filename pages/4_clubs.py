@@ -1,10 +1,10 @@
-import pandas as pd
+import plotly.express as px
 import streamlit as st
 
 from db.database import get_connection, init_schema
-from db.queries import club_medals
+from db.queries import club_avg_scores, club_list, club_medals, club_roster
 from ui.components import stat_card
-from ui.theme import inject_theme
+from ui.theme import inject_theme, plotly_layout
 
 inject_theme()
 st.title("Clubs")
@@ -12,7 +12,7 @@ st.title("Clubs")
 conn = get_connection()
 init_schema(conn)
 
-clubs = pd.read_sql_query("SELECT id, name FROM clubs ORDER BY name", conn)
+clubs = club_list(conn)
 if clubs.empty:
     st.info("No clubs yet. Use the Import page to add results.")
     conn.close()
@@ -29,8 +29,16 @@ for col, (place, label) in zip(cols, [(1, "Gold"), (2, "Silver"), (3, "Bronze")]
         stat_card(label, str(counts.get(place, 0)))
 
 st.subheader("Roster")
-roster = pd.read_sql_query(
-    "SELECT name, year_of_birth, country FROM athletes WHERE club_id = ? ORDER BY name",
-    conn, params=(int(club_id),))
-st.dataframe(roster, hide_index=True, width="stretch")
+st.dataframe(club_roster(conn, int(club_id)), hide_index=True, width="stretch")
+
+avg = club_avg_scores(conn, int(club_id))
+if not avg.empty:
+    st.subheader("Scores")
+    avg = avg.copy()
+    avg["x_label"] = avg["competition"] + "<br>" + avg["date"]
+    fig = px.line(avg, x="x_label", y="avg_total", markers=True,
+                  title="Average score per competition",
+                  labels={"avg_total": "Avg score", "x_label": ""},
+                  category_orders={"x_label": list(dict.fromkeys(avg["x_label"]))})
+    st.plotly_chart(plotly_layout(fig), width="stretch")
 conn.close()

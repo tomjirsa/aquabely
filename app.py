@@ -1,6 +1,7 @@
 import streamlit as st
 
 st.set_page_config(layout="wide")
+st.markdown('<style>section[data-testid="stSidebar"] a[href$="import"]{display:none !important}</style>', unsafe_allow_html=True)
 
 pg = st.navigation([
     st.Page("pages/0_home.py", title="Home", icon="🏠", default=True),
