@@ -23,13 +23,14 @@ fig_ranks AS (
     SELECT
         fr.result_id,
         f.number AS figure_number,
-        f.name AS figure_name,
+        COALESCE(fc.name, f.name) AS figure_name,
         RANK() OVER (PARTITION BY fr.figure_id
                      ORDER BY fr.score DESC) AS fig_rank_overall,
         RANK() OVER (PARTITION BY fr.figure_id, a.year_of_birth
                      ORDER BY fr.score DESC) AS fig_rank_by_year
     FROM figure_results fr
     JOIN figures f ON f.id = fr.figure_id
+    LEFT JOIN figure_catalogue fc ON fc.id = f.catalogue_id
     JOIN results r ON r.id = fr.result_id
     JOIN athletes a ON a.id = r.athlete_id
 )
@@ -134,10 +135,11 @@ def athlete_overall_ranks(conn, athlete_id):
 def athlete_figure_scores(conn, athlete_id):
     return pd.read_sql_query(
         """SELECT c.date AS date, c.name AS competition,
-                  f.name AS figure_name, fr.score AS figure_score
+                  COALESCE(fc.name, f.name) AS figure_name, fr.score AS figure_score
            FROM figure_results fr
            JOIN results r ON r.id = fr.result_id
            JOIN figures f ON f.id = fr.figure_id
+           LEFT JOIN figure_catalogue fc ON fc.id = f.catalogue_id
            JOIN competition_categories cc ON cc.id = r.competition_category_id
            JOIN competitions c ON c.id = cc.competition_id
            WHERE r.athlete_id = ?
@@ -147,11 +149,12 @@ def athlete_figure_scores(conn, athlete_id):
 
 def result_judge_marks(conn, result_id):
     return pd.read_sql_query(
-        """SELECT f.name AS figure_name,
+        """SELECT COALESCE(fc.name, f.name) AS figure_name,
                   fr.judge_1, fr.judge_2, fr.judge_3, fr.judge_4,
                   fr.judge_5, fr.judge_6, fr.judge_7
            FROM figure_results fr
            JOIN figures f ON f.id = fr.figure_id
+           LEFT JOIN figure_catalogue fc ON fc.id = f.catalogue_id
            WHERE fr.result_id = ?
            ORDER BY f.id""",
         conn, params=(result_id,))
@@ -195,8 +198,11 @@ def club_avg_scores(conn, club_id):
 
 def competition_figures(conn, competition_category_id):
     return pd.read_sql_query(
-        """SELECT number, name, difficulty FROM figures
-           WHERE competition_category_id = ? ORDER BY id""",
+        """SELECT f.number AS number, COALESCE(fc.name, f.name) AS name,
+                  f.difficulty AS difficulty
+           FROM figures f
+           LEFT JOIN figure_catalogue fc ON fc.id = f.catalogue_id
+           WHERE f.competition_category_id = ? ORDER BY f.id""",
         conn, params=(competition_category_id,))
 
 

@@ -154,7 +154,7 @@ def test_club_avg_scores():
 def test_competition_figures(conn):
     cc = int(competitions_for_level(conn, "L3").iloc[0]["competition_category_id"])
     df = competition_figures(conn, cc)
-    assert list(df["number"]) == ["F1"] and list(df["name"]) == ["Straight Ballet Leg"]
+    assert list(df["number"]) == ["F1"] and list(df["name"]) == ["Ballet Leg Single"]
 
 
 def test_competition_judge_detail(conn):
@@ -170,10 +170,10 @@ def test_athlete_figure_scores_and_judge_marks(conn):
     aid = _aid(conn, "A")
     df = athlete_figure_scores(conn, aid)
     assert len(df) == 1
-    assert (df.iloc[0]["figure_name"], df.iloc[0]["figure_score"]) == ("Straight Ballet Leg", 5.0)
+    assert (df.iloc[0]["figure_name"], df.iloc[0]["figure_score"]) == ("Ballet Leg Single", 5.0)
     rid = int(athlete_history(conn, aid).iloc[0]["result_id"])
     marks = result_judge_marks(conn, rid)
-    assert len(marks) == 1 and marks.iloc[0]["figure_name"] == "Straight Ballet Leg"
+    assert len(marks) == 1 and marks.iloc[0]["figure_name"] == "Ballet Leg Single"
     assert marks.iloc[0]["judge_1"] == 5.0 and pd.isna(marks.iloc[0]["judge_7"])
 
 
@@ -328,3 +328,23 @@ def test_catalogue_figures_lists_unperformed_figures(seeded_u12):
     df = catalogue_figures(seeded_u12.conn, "U12")
     row = df[df["code"] == "301"].iloc[0]
     assert row["performances"] == 0
+
+
+def test_figure_queries_use_catalogue_name_so_code_101_is_one_figure():
+    c = sqlite3.connect(":memory:")
+    init_schema(c)
+    for n, (printed, date) in enumerate([("Straight Ballet Leg", "2026-01-01"),
+                                         ("Ballet Leg Single", "2026-02-01")]):
+        comp = make(level="L3", name="Ann", club="C")
+        comp = dataclasses.replace(
+            comp, date=date, figures=[FigureDef("F1", printed, None, "101")])
+        import_competition(c, comp, sha256=f"n101-{n}", filename=f"n{n}.pdf")
+    athlete_id = c.execute("SELECT id FROM athletes WHERE name='Ann'").fetchone()[0]
+    scores = athlete_figure_scores(c, athlete_id)
+    assert len(scores) == 2
+    assert list(scores["figure_name"].unique()) == ["Ballet Leg Single"]
+    assert set(athlete_rankings(c, athlete_id)["figure_name"]) == {"Ballet Leg Single"}
+    for (rid,) in c.execute("SELECT id FROM results").fetchall():
+        assert list(result_judge_marks(c, rid)["figure_name"]) == ["Ballet Leg Single"]
+    for (cc,) in c.execute("SELECT id FROM competition_categories").fetchall():
+        assert list(competition_figures(c, cc)["name"]) == ["Ballet Leg Single"]
