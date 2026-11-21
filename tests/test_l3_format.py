@@ -39,3 +39,11 @@ def test_penalty_and_points_behind_for_winner():
     comp = L3Parser().parse(BEGINNER)
     assert comp.results[0].penalty == 0.0
     assert comp.results[0].points_behind == 0.0
+
+
+@needs_samples
+def test_l3_names_have_no_ascii_all_caps_words():
+    for path in (BEGINNER, HERSALKOVA):
+        for r in L3Parser().parse(path).results:
+            for w in r.name.split():
+                assert not (len(w) > 1 and w.isascii() and w.isupper()), r.name

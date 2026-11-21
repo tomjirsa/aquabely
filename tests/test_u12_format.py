@@ -1,6 +1,7 @@
 from pathlib import Path
 import pytest
 from parser.formats.u12 import U12Parser, _split_runs
+from parser.text import normalize_club, normalize_person_name
 
 SAMPLE = Path(__file__).parent.parent / "data" / "U12_figures_detail.pdf"
 needs_sample = pytest.mark.skipif(not SAMPLE.exists(), reason="sample U12 PDF not in data/")
@@ -72,7 +73,7 @@ def test_u12_scores_and_points_behind(comp):
 ])
 def test_club_and_name_are_split(comp, rank, club, name):
     r = comp.results[rank - 1]
-    assert (r.rank, r.club, r.name) == (rank, club, name)
+    assert (r.rank, r.club, r.name) == (rank, normalize_club(club), normalize_person_name(name))
 
 
 @needs_sample
@@ -100,3 +101,9 @@ def test_split_runs_breaks_on_backward_jump_and_on_column_gap():
 
 def test_split_runs_keeps_contiguous_text_together():
     assert _split_runs(_chars((60, "Spolek pro akvabely"))) == ["Spolek pro akvabely"]
+
+
+@needs_sample
+def test_u12_names_are_normalised(comp):
+    assert comp.results[0].name == "Frischová Tereza"
+    assert comp.results[0].club == "Plavecký Klub Slávia Vš Plzeň z.s."

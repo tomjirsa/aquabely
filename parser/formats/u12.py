@@ -34,8 +34,8 @@ character's right edge (a jump back: overprinted cell) or more than
 Every row must give exactly three runs: rank, club, ``NAME Given (YYYY)``.
 Any other count raises ``ValueError``. All 76 sample rows split this way.
 
-Names and clubs are stored exactly as extracted (no case or diacritic
-changes).
+Names are normalised by ``normalize_person_name``, clubs by
+``normalize_club``.
 """
 from __future__ import annotations
 
@@ -44,6 +44,7 @@ from pathlib import Path
 
 import pdfplumber
 
+from parser.text import normalize_club, normalize_person_name
 from parser.models import FigureDef, FigureResult, ParsedCompetition, ParsedResult
 
 # Max forward gap (pt) between two characters of the same text run. Word
@@ -183,8 +184,8 @@ class U12Parser:
             ParsedResult(
                 rank=r["rank"],
                 entry_number=None,
-                name=r["name"],
-                club=r["club"],
+                name=normalize_person_name(r["name"]),
+                club=normalize_club(r["club"]),
                 country="",
                 year_of_birth=r["yob"],
                 total_score=r["total"],
