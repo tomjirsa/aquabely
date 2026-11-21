@@ -78,8 +78,12 @@ for uf in (uploaded or []):
     report = validate(comp)
     for e in report.errors:
         st.error(e)
-    for w in report.warnings:
-        st.warning(w)
+    if report.warnings:
+        st.warning(f"{len(report.warnings)} score checks differ slightly from the "
+                   "published figure scores; details below.")
+        with st.expander("Show score-check details"):
+            for w in report.warnings:
+                st.write(w)
 
     if st.button("Import", key=f"imp_{sha}", disabled=bool(report.errors)):
         conn = get_connection()
