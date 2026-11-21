@@ -4,7 +4,7 @@ from db.database import init_schema
 
 TABLES = {"clubs", "categories", "competitions", "competition_categories",
 "figures", "athletes", "results",
-          "figure_results", "imports"}
+          "figure_results", "imports", "figure_catalogue"}
 
 
 @pytest.fixture
