@@ -11,6 +11,7 @@ def conn():
     c.execute("PRAGMA foreign_keys = ON")
     init_schema(c)
     c.execute("INSERT INTO categories(code, name) VALUES ('L3','Level 3'), ('U12','Under 12')")
+    c.commit()  # seed data must survive the importer's rollback
     yield c
 
 
@@ -40,7 +41,22 @@ def test_validation_error_writes_no_data_and_logs_rejection(conn):
     with pytest.raises(ValidationFailed):
         import_competition(conn, bad, sha256="h2", filename="b.pdf")
     assert conn.execute("SELECT COUNT(*) FROM results").fetchone()[0] == 0
+    assert conn.execute("SELECT COUNT(*) FROM imports").fetchone()[0] == 1
     assert conn.execute("SELECT status FROM imports").fetchone()[0] == "rejected"
+
+
+def test_mid_write_failure_rolls_back_everything_and_logs_rejection(conn):
+    comp = make()
+    dup = ParsedResult(2, 2, "A", "C", "CZE", 2016, 49.0, 0.0, 1.0,
+                       [FigureResult("F1", [5.0] * 5, 5.0, 0.0)])
+    comp.results.append(dup)  # same athlete+club -> UNIQUE(competition_category_id, athlete_id)
+    with pytest.raises(sqlite3.IntegrityError):
+        import_competition(conn, comp, sha256="h6", filename="dup.pdf")
+    for table in ("clubs", "athletes", "competitions", "competition_categories",
+                  "figures", "results", "figure_results"):
+        assert conn.execute(f"SELECT COUNT(*) FROM {table}").fetchone()[0] == 0, table
+    rows = conn.execute("SELECT status FROM imports").fetchall()
+    assert rows == [("rejected",)]
 
 
 def test_same_athlete_in_two_levels_is_one_row(conn):
