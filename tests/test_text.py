@@ -19,3 +19,15 @@ def test_person_name_multiple_given_names():
 
 def test_club_keeps_abbreviations():
     assert normalize_club("TJ TESLA BRNO z.s.") == "TJ TESLA BRNO z.s."
+
+
+def test_club_keeps_short_caps_with_diacritics():
+    assert normalize_club("Plavecký klub Slávia VŠ Plzeň z.s.") == "Plavecký Klub Slávia VŠ Plzeň z.s."
+
+
+def test_club_keeps_short_caps_ascii():
+    assert normalize_club("SK Brno") == "SK Brno"
+
+
+def test_club_capitalizes_lowercase_words():
+    assert normalize_club("Spolek pro akvabely, z.s.") == "Spolek Pro Akvabely, z.s."

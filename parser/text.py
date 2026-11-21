@@ -24,7 +24,8 @@ def normalize_club(s: str) -> str:
 
     - all-lowercase              -> capitalize        ("cup" -> "Cup")
     - ALL-CAPS ASCII             -> keep              (abbreviations: FIG, SK, TJ)
-    - ALL-CAPS with diacritics   -> capitalize        (HOLUBCOVÁ -> Holubcová)
+    - ALL-CAPS up to 3 letters   -> keep              (abbreviations with diacritics: VŠ)
+    - ALL-CAPS longer w/ diacrit.-> capitalize        (HOLUBCOVÁ -> Holubcová)
     - valid title / hyphen-title -> keep              (Chromíková, Nuler-Trageser)
     - broken mixed case          -> capitalize        (ChROMÍKOVÁ -> Chromíková)
     - lowercase dotted abbrev.   -> keep              (z.s., o.p.s.)
@@ -35,7 +36,7 @@ def normalize_club(s: str) -> str:
         if w == w.lower():
             return w.capitalize()
         if w == w.upper():
-            return w if w.isascii() else w.capitalize()
+            return w if (w.isascii() or len(w) <= 3) else w.capitalize()
         if _is_title(w):
             return w
         return w.capitalize()

@@ -106,4 +106,4 @@ def test_split_runs_keeps_contiguous_text_together():
 @needs_sample
 def test_u12_names_are_normalised(comp):
     assert comp.results[0].name == "Frischová Tereza"
-    assert comp.results[0].club == "Plavecký Klub Slávia Vš Plzeň z.s."
+    assert comp.results[0].club == "Plavecký Klub Slávia VŠ Plzeň z.s."
