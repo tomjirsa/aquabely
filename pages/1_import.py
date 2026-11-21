@@ -10,6 +10,8 @@ from db.importer import DuplicateImportError, ValidationFailed, import_competiti
 from parser.registry import (PARSERS, AmbiguousFormatError, UnknownFormatError,
                              detect_format, get_parser)
 from parser.validate import validate
+from ui.import_helpers import (FORMAT_PLACEHOLDER, format_options,
+                               needs_format_choice, write_if_changed)
 from ui.theme import inject_theme
 
 INBOX = Path(os.environ.get("AQUABELY_INBOX", Path(__file__).parent.parent / "data"))
@@ -30,8 +32,9 @@ def _first_page_text(path: Path) -> str:
         return (pdf.pages[0].extract_text() or "") if pdf.pages else ""
 
 
-@st.cache_data(show_spinner=False)
 def _parse(path: str, format_id: str):
+    # Deliberately uncached: a cache keyed by path could serve a stale parse
+    # for a different file uploaded under the same name.
     return get_parser(format_id).parse(Path(path))
 
 
@@ -41,7 +44,7 @@ for uf in (uploaded or []):
     data = uf.getvalue()
     sha = _sha256(data)
     dest = INBOX / uf.name
-    dest.write_bytes(data)
+    write_if_changed(dest, data)
 
     st.subheader(uf.name)
     detected = None
@@ -53,12 +56,16 @@ for uf in (uploaded or []):
         st.error(f"Could not read the PDF: {exc}")
         continue
 
-    index = format_ids.index(detected) if detected in format_ids else 0
     if detected:
         st.caption(f"Detected format: {detected}")
-    format_id = st.selectbox("Format", format_ids, index=index, key=f"fmt_{sha}")
-    if detected is None:
+    options = format_options(format_ids, detected)
+    index = options.index(detected) if detected in options else 0
+    format_id = st.selectbox("Format", options, index=index, key=f"fmt_{sha}",
+                             format_func=lambda v: FORMAT_PLACEHOLDER if v is None else v)
+    if needs_format_choice(detected) and format_id is None:
         st.warning("Pick the format manually to continue.")
+        st.button("Import", key=f"imp_{sha}", disabled=True)
+        continue
 
     try:
         comp = _parse(str(dest), format_id)
