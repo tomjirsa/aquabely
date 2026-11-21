@@ -212,3 +212,59 @@ def competition_judge_detail(conn, competition_category_id):
            WHERE r.competition_category_id = ?
            ORDER BY r.rank, a.name, f.id""",
         conn, params=(competition_category_id,))
+
+
+_JUDGES = "fr.judge_1, fr.judge_2, fr.judge_3, fr.judge_4, fr.judge_5, fr.judge_6, fr.judge_7"
+
+
+def competition_figure_detail(conn, competition_category_id):
+    return pd.read_sql_query(
+        f"""SELECT a.name AS athlete, r.rank AS rank, fc.name AS figure_name,
+                   fc.coefficient AS coefficient, {_JUDGES},
+                   fr.score AS figure_score, fr.penalty AS figure_penalty
+            FROM figure_results fr
+            JOIN results r ON r.id = fr.result_id
+            JOIN athletes a ON a.id = r.athlete_id
+            JOIN figures f ON f.id = fr.figure_id
+            JOIN figure_catalogue fc ON fc.id = f.catalogue_id
+            WHERE r.competition_category_id = ?
+            ORDER BY r.rank, a.name, f.id""",
+        conn, params=(competition_category_id,))
+
+
+def athlete_figure_detail(conn, athlete_id):
+    return pd.read_sql_query(
+        f"""SELECT c.name AS competition, c.date AS date, fc.name AS figure_name,
+                   fc.coefficient AS coefficient, {_JUDGES},
+                   fr.score AS figure_score
+            FROM figure_results fr
+            JOIN results r ON r.id = fr.result_id
+            JOIN competition_categories cc ON cc.id = r.competition_category_id
+            JOIN competitions c ON c.id = cc.competition_id
+            JOIN figures f ON f.id = fr.figure_id
+            JOIN figure_catalogue fc ON fc.id = f.catalogue_id
+            WHERE r.athlete_id = ?
+            ORDER BY c.date, c.id, f.id""",
+        conn, params=(athlete_id,))
+
+
+def catalogue_figures(conn, level):
+    # The inner query is pre-sorted by date so GROUP_CONCAT lists competitions chronologically.
+    return pd.read_sql_query(
+        """SELECT code, name, coefficient, description_cs,
+                  COUNT(fr_id) AS performances,
+                  GROUP_CONCAT(DISTINCT cname) AS competitions
+           FROM (SELECT fc.id AS fc_id, fc.code AS code, fc.name AS name,
+                        fc.coefficient AS coefficient, fc.description_cs AS description_cs,
+                        fr.id AS fr_id, c.name AS cname
+                 FROM figure_catalogue fc
+                 LEFT JOIN (figures f
+                            JOIN competition_categories cc ON cc.id = f.competition_category_id
+                            JOIN competitions c ON c.id = cc.competition_id)
+                        ON f.catalogue_id = fc.id
+                 LEFT JOIN figure_results fr ON fr.figure_id = f.id
+                 WHERE fc.level = ?
+                 ORDER BY c.date, c.id)
+           GROUP BY fc_id
+           ORDER BY coefficient, name""",
+        conn, params=(level,))

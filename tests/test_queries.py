@@ -8,7 +8,8 @@ from db.queries import (competitions_for_level, results_for, club_medals, athlet
                         athlete_list, athlete_history, athlete_overall_ranks,
                         athlete_figure_scores, result_judge_marks, level_athlete_count,
                         club_list, club_roster, club_avg_scores, competition_figures,
-                        competition_judge_detail)
+                        competition_judge_detail, competition_figure_detail,
+                        athlete_figure_detail, catalogue_figures)
 from parser.models import FigureDef, FigureResult, ParsedCompetition, ParsedResult
 from tests.test_importer import make  # reuse builder
 
@@ -284,3 +285,46 @@ def test_same_figure_name_under_different_numbers_is_one_figure():
     from ui.components import build_ranking_table
     wide, fig_cols = build_ranking_table(df, by_year=False)
     assert sorted(fig_cols) == ["Barracuda", "Straight Ballet Leg"] and len(wide) == 2
+
+
+@pytest.fixture
+def seeded_u12():
+    c = sqlite3.connect(":memory:")
+    init_schema(c)
+    comp = make(level="U12", name="Ann", club="C")
+    import_competition(c, comp, sha256="u12", filename="u.pdf")
+    cc_id = c.execute("SELECT id FROM competition_categories").fetchone()[0]
+
+    class S:
+        conn = c
+    S.cc_id = cc_id
+    S.competition_name = comp.name
+    return S
+
+
+def test_competition_figure_detail_has_name_and_coefficient(seeded_u12):
+    df = competition_figure_detail(seeded_u12.conn, seeded_u12.cc_id)
+    row = df.iloc[0]
+    assert row["figure_name"] == "Straight Ballet Leg"
+    assert row["coefficient"] == 1.6
+    assert row["judge_1"] == 5.0 and pd.isna(row["judge_6"])
+
+
+def test_athlete_figure_detail_columns(seeded_u12):
+    aid = seeded_u12.conn.execute("SELECT id FROM athletes").fetchone()[0]
+    df = athlete_figure_detail(seeded_u12.conn, aid)
+    assert df.iloc[0]["competition"] == seeded_u12.competition_name
+    assert df.iloc[0]["figure_name"] == "Straight Ballet Leg"
+
+
+def test_catalogue_figures_counts_performances_and_competitions(seeded_u12):
+    df = catalogue_figures(seeded_u12.conn, "U12")
+    row = df[df["code"] == "106"].iloc[0]
+    assert row["performances"] == 1
+    assert row["competitions"] == seeded_u12.competition_name
+
+
+def test_catalogue_figures_lists_unperformed_figures(seeded_u12):
+    df = catalogue_figures(seeded_u12.conn, "U12")
+    row = df[df["code"] == "301"].iloc[0]
+    assert row["performances"] == 0
