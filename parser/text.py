@@ -2,6 +2,7 @@
 from __future__ import annotations
 
 import re
+import unicodedata
 
 
 _DOTTED_ABBREV = re.compile(r"^(?:[a-z]{1,3}\.){2,}$")
@@ -16,6 +17,13 @@ def _is_title(w: str) -> bool:
     return all(
         seg and seg[0].isupper() and seg[1:] == seg[1:].lower()
         for seg in w.split("-")
+    )
+
+
+def _fold_ascii(s: str) -> str:
+    """Strip diacritics: NFKD-decompose and drop combining marks."""
+    return "".join(
+        c for c in unicodedata.normalize("NFKD", s) if unicodedata.category(c) != "Mn"
     )
 
 
@@ -40,7 +48,7 @@ def normalize_club(s: str) -> str:
             return w
         return w.capitalize()
 
-    return " ".join(_cap(w) for w in _collapse(s).split())
+    return _fold_ascii(" ".join(_cap(w) for w in _collapse(s).split()))
 
 
 def normalize_person_name(s: str) -> str:
@@ -56,4 +64,4 @@ def normalize_person_name(s: str) -> str:
             return "-".join(seg.capitalize() for seg in w.split("-"))
         return w.capitalize()
 
-    return " ".join(_cap(w) for w in _collapse(s).split())
+    return _fold_ascii(" ".join(_cap(w) for w in _collapse(s).split()))
