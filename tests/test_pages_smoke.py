@@ -21,3 +21,11 @@ def test_athletes_page_renders_figure_detail_with_seeded_data(seeded_app_db):
     at = AppTest.from_file(str(ROOT / "views/3_athletes.py"), default_timeout=30).run()
     assert not at.exception
     assert any("Figure detail" in h.value for h in at.subheader)
+
+
+def test_figures_page_renders_on_empty_database(tmp_path, monkeypatch):
+    monkeypatch.setenv("AQUABELY_DB", str(tmp_path / "f.db"))
+    import db.database
+    monkeypatch.setattr(db.database, "DB_PATH", tmp_path / "f.db")
+    at = AppTest.from_file(str(ROOT / "views/5_figures.py"), default_timeout=20).run()
+    assert not at.exception
