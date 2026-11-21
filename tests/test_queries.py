@@ -224,3 +224,32 @@ def test_athlete_overall_ranks_field_sizes():
     c = _field_conn()
     df = athlete_overall_ranks(c, _aid(c, "Z"))
     assert df.iloc[0]["field_size"] == 3 and df.iloc[0]["field_size_by_year"] == 2
+
+
+def test_figure_rank_is_per_figure_not_per_category():
+    # (name, yob, F1 score, F2 score): figure orders are deliberately opposite.
+    rows = [("A", 2016, 9.0, 1.0), ("B", 2016, 8.0, 2.0), ("C", 2015, 7.0, 3.0)]
+    results = []
+    for i, (nm, yob, s1, s2) in enumerate(rows):
+        figs = [FigureResult("F1", [5.0] * 5, s1, 0.0), FigureResult("F2", [5.0] * 5, s2, 0.0)]
+        results.append(ParsedResult(i + 1, i + 1, nm, "C", "CZE", yob, s1 + s2, 0.0, 0.0, figs))
+    comp = ParsedCompetition("Cup", "2026-01-01", "", "U12", "2014–2019", 2014, 2019, 5,
+                             [FigureDef("F1", "Ballet", None), FigureDef("F2", "Spin", None)],
+                             results)
+    c = sqlite3.connect(":memory:")
+    init_schema(c)
+    import_competition(c, comp, sha256="fr1", filename="fr1.pdf")
+    ranks = {}
+    for nm, *_ in rows:
+        aid = c.execute("SELECT id FROM athletes WHERE name=?", (nm,)).fetchone()[0]
+        df = athlete_rankings(c, aid)
+        for _, r in df.iterrows():
+            assert 1 <= r["fig_rank_overall"] <= r["field_size"]
+            assert 1 <= r["fig_rank_by_year"] <= r["field_size_by_year"]
+            ranks[(nm, r["figure_number"])] = (int(r["fig_rank_overall"]),
+                                               int(r["fig_rank_by_year"]))
+    assert [ranks[(n, "F1")][0] for n in "ABC"] == [1, 2, 3]
+    assert [ranks[(n, "F2")][0] for n in "ABC"] == [3, 2, 1]
+    assert [ranks[(n, "F1")][1] for n in "AB"] == [1, 2]
+    assert [ranks[(n, "F2")][1] for n in "AB"] == [2, 1]
+    assert ranks[("C", "F1")][1] == 1 and ranks[("C", "F2")][1] == 1

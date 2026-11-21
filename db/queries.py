@@ -23,9 +23,9 @@ fig_ranks AS (
     SELECT
         fr.result_id,
         f.number AS figure_number,
-        RANK() OVER (PARTITION BY f.competition_category_id
+        RANK() OVER (PARTITION BY fr.figure_id
                      ORDER BY fr.score DESC) AS fig_rank_overall,
-        RANK() OVER (PARTITION BY f.competition_category_id, a.year_of_birth
+        RANK() OVER (PARTITION BY fr.figure_id, a.year_of_birth
                      ORDER BY fr.score DESC) AS fig_rank_by_year
     FROM figure_results fr
     JOIN figures f ON f.id = fr.figure_id
