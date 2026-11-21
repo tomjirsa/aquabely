@@ -32,7 +32,7 @@ CREATE TABLE IF NOT EXISTS competition_categories (
 CREATE TABLE IF NOT EXISTS figures (
     id INTEGER PRIMARY KEY AUTOINCREMENT,
     competition_category_id INTEGER NOT NULL REFERENCES competition_categories(id),
-    number INTEGER NOT NULL,
+    number TEXT NOT NULL,
     name TEXT NOT NULL,
     difficulty REAL
 );

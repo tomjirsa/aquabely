@@ -17,8 +17,9 @@ def conn():
 
 
 def test_creates_all_tables(conn):
-    names = {r[0] for r in conn.execute("SELECT name FROM sqlite_master WHERE type='table'")}
-    assert TABLES <= names
+    names = {r[0] for r in conn.execute("SELECT name FROM sqlite_master WHERE type='table'")
+             if not r[0].startswith("sqlite_")}
+    assert names == TABLES
 
 
 def test_duplicate_source_sha256_is_rejected(conn):
