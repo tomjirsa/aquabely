@@ -3,7 +3,7 @@ import pytest
 from db.database import init_schema
 
 TABLES = {"clubs", "categories", "competitions", "competition_categories",
-          "figures", "athletes", "name_corrections", "results",
+"figures", "athletes", "results",
           "figure_results", "imports"}
 
 

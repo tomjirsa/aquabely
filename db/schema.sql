@@ -46,14 +46,6 @@ CREATE TABLE IF NOT EXISTS athletes (
     UNIQUE(name, club_id)
 );
 
-CREATE TABLE IF NOT EXISTS name_corrections (
-    id INTEGER PRIMARY KEY AUTOINCREMENT,
-    raw_name TEXT NOT NULL,
-    raw_club TEXT NOT NULL,
-    corrected_name TEXT NOT NULL,
-    UNIQUE(raw_name, raw_club)
-);
-
 CREATE TABLE IF NOT EXISTS results (
     id INTEGER PRIMARY KEY AUTOINCREMENT,
     competition_category_id INTEGER NOT NULL REFERENCES competition_categories(id),

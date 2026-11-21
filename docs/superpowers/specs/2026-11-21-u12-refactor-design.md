@@ -33,7 +33,7 @@ Out of scope: team events beyond clubs, OCR, and formats beyond L3 and U12.
 | Parser selection | Auto-detect from the first-page header, with a manual override on the import page. |
 | Category model | `categories` = level (`L3`, `U12`). Age group (birth-year range) is a field on each competition entry. "Beginner L3" and "L3" are the same level. |
 | Judges | Count varies by competition (7 in one L3 file, 5 in another, 5 in U12). Stored per competition entry, not per category. Every mark is kept. |
-| Names | Text extraction loses Czech diacritics in some PDFs (`Kov��ikov�`). Names are stored as extracted. A name-correction table, maintained on the import page, maps extracted names to correct spellings. |
+| Names | Stored as extracted. Czech diacritics are present in the text layer of all three sample PDFs. No correction step. |
 | Figures | Scoped to each competition entry. Figure sets and difficulties can differ between events. |
 | UI | Streamlit multi-page app with custom CSS theme and Plotly charts. |
 | Data | Fresh database. No migration. |
@@ -70,9 +70,6 @@ athletes                          -- shared across categories
   club_id NOT NULL,
   UNIQUE(name, club_id)
 
-name_corrections
-  id, raw_name, raw_club, corrected_name,
-  UNIQUE(raw_name, raw_club)
 
 results
   id, competition_category_id, athlete_id, club_id,  -- club as entered for that event
@@ -106,7 +103,6 @@ parser/
     u12.py           -- judge panels in header, numeric figure IDs, 5 judges, no difficulty
   registry.py        -- run all detect() calls; 0 or >1 match is an error
   validate.py        -- structural checks before anything is written
-  names.py           -- applies name_corrections to parsed names
 ```
 
 Format interface:
@@ -127,16 +123,14 @@ Import flow:
 1. Read the file and compute its SHA-256. If `competitions.source_sha256` already exists, refuse.
 2. Run `registry.detect`. Show the detected level on the import page, with a dropdown to override.
 3. Parse and validate. On error, show the message and log the attempt in `imports`.
-4. Apply `name_corrections`. Show any extracted names that still contain replacement characters (`�`) and offer a correction form for each.
-5. Write everything in one transaction.
+4. Write everything in one transaction.
 
 ---
 
 ## Known Problems to Fix in the Port
 
 - **Dropped judge mark (L3 parser):** for the first sample's F1, the parser keeps 6 of 7 judge marks. The 7 marks average to 6.214, and 6.214 × 1.6 reproduces the printed figure score of 9.944, so the dropped mark is real. The ported parser must keep all marks, and validation must catch any mismatch.
-- **Diacritics:** pdfplumber, pdfium, and pypdf all drop the same Czech characters from the U12 PDF. The characters are not in the PDF's text layer, so parsing cannot recover them. The name-correction table is the fix.
-- **Name variation:** pdfplumber and pdfium disagree on some name text (for example `Fz.RsI.SCHOV…` vs `z.s. FRISCHOV…`). Corrections are keyed on the extracted name and club, so a fix applies to all imports that produce the same text.
+- **Diacritics:** the Czech letters are present in the text layer of all three sample PDFs (checked: zero replacement characters; for example `SCHOVÁ`). An earlier reading that they were lost was a console display artifact. No correction step is needed.
 
 ---
 
@@ -145,7 +139,7 @@ Import flow:
 Streamlit multi-page app (`st.navigation`), custom theme in `ui/theme.py`, shared components in `ui/components.py`.
 
 - **Home:** level switch (L3 / U12) and a short summary per level: latest competition, top placings, athletes who moved up the rankings.
-- **Import:** upload a PDF, show the detected level with an override, show validation errors, and provide the name-correction form for names containing `�`.
+show validation errors.
 - **Competitions:** pick a competition and age group. Results table with rank, athlete, club, total, penalty, points behind. Expandable figure and judge detail. Difficulty column hidden when NULL.
 - **Athletes:** search by name, profile card, and history across all levels. A shared athlete appears in both L3 and U12 if they competed in both. Positions-over-time and score charts as in the existing athlete spec.
 - **Clubs:** roster per club, medal tally, and the club's average score per competition.
@@ -158,7 +152,7 @@ Streamlit multi-page app (`st.navigation`), custom theme in `ui/theme.py`, share
 - Tests assert: figure and athlete counts, judge counts per figure, every judge mark retained, and the validation checks.
 - No PDFs are committed. `data/` is git-ignored because the samples contain children's names.
 - Database tests use an in-memory SQLite database and cover the import transaction (all-or-nothing) and idempotency (duplicate hash refused).
-- Manual check: run the app and import all three sample PDFs, then confirm the dashboards and the name-correction flow.
+then confirm the dashboards.
 
 ---
 
