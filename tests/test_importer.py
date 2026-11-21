@@ -1,0 +1,61 @@
+import sqlite3
+import pytest
+from db.database import init_schema
+from db.importer import import_competition, DuplicateImportError, ValidationFailed
+from parser.models import FigureDef, FigureResult, ParsedCompetition, ParsedResult
+
+
+@pytest.fixture
+def conn():
+    c = sqlite3.connect(":memory:")
+    c.execute("PRAGMA foreign_keys = ON")
+    init_schema(c)
+    c.execute("INSERT INTO categories(code, name) VALUES ('L3','Level 3'), ('U12','Under 12')")
+    yield c
+
+
+def make(level="L3", name="A", club="C", judges=5):
+    fr = FigureResult("F1", [5.0] * judges, 5.0, 0.0)
+    r = ParsedResult(1, 1, name, club, "CZE", 2016, 50.0, 0.0, 0.0, [fr])
+    return ParsedCompetition("Cup", "2026-01-01", "", level, "2014–2019", 2014, 2019,
+                             judges, [FigureDef("F1", "Ballet", None)], [r])
+
+
+def test_import_writes_rows(conn):
+    cid = import_competition(conn, make(), sha256="h1", filename="a.pdf")
+    assert conn.execute("SELECT COUNT(*) FROM results").fetchone()[0] == 1
+    assert cid == 1
+
+
+def test_reimport_same_hash_is_refused_and_writes_nothing(conn):
+    import_competition(conn, make(), sha256="h1", filename="a.pdf")
+    with pytest.raises(DuplicateImportError):
+        import_competition(conn, make(), sha256="h1", filename="a.pdf")
+    assert conn.execute("SELECT COUNT(*) FROM results").fetchone()[0] == 1
+
+
+def test_validation_error_writes_no_data_and_logs_rejection(conn):
+    bad = make(judges=5)
+    bad.results[0].figure_results[0].judge_scores.pop()
+    with pytest.raises(ValidationFailed):
+        import_competition(conn, bad, sha256="h2", filename="b.pdf")
+    assert conn.execute("SELECT COUNT(*) FROM results").fetchone()[0] == 0
+    assert conn.execute("SELECT status FROM imports").fetchone()[0] == "rejected"
+
+
+def test_same_athlete_in_two_levels_is_one_row(conn):
+    import_competition(conn, make(level="L3", name="Shared", club="C"), sha256="h3", filename="l3.pdf")
+    import_competition(conn, make(level="U12", name="Shared", club="C", judges=5), sha256="h4", filename="u12.pdf")
+    assert conn.execute("SELECT COUNT(*) FROM athletes WHERE name='Shared'").fetchone()[0] == 1
+    assert conn.execute("SELECT COUNT(*) FROM results").fetchone()[0] == 2
+
+
+def test_nonzero_penalty_round_trips(conn):
+    fr = FigureResult("F1", [5.0] * 5, 5.0, 0.5)
+    r = ParsedResult(1, 1, "A", "C", "CZE", 2016, 50.0, 1.5, 0.0, [fr])
+    comp = ParsedCompetition("Cup", "2026-01-01", "", "L3", "2014–2019", 2014, 2019,
+                             5, [FigureDef("F1", "Ballet", None)], [r])
+    import_competition(conn, comp, sha256="h5", filename="p.pdf")
+    assert conn.execute("SELECT penalty FROM results").fetchone()[0] == 1.5
+    assert conn.execute("SELECT penalty FROM figure_results").fetchone()[0] == 0.5
+    assert conn.execute("SELECT total_score FROM results").fetchone()[0] == 50.0
