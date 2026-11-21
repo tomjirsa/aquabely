@@ -11,7 +11,9 @@ WITH all_ranks AS (
         RANK() OVER (PARTITION BY r.competition_category_id
                      ORDER BY r.total_score DESC) AS rank_overall,
         RANK() OVER (PARTITION BY r.competition_category_id, a.year_of_birth
-                     ORDER BY r.total_score DESC) AS rank_by_year
+                     ORDER BY r.total_score DESC) AS rank_by_year,
+        COUNT(*) OVER (PARTITION BY r.competition_category_id) AS field_size,
+        COUNT(*) OVER (PARTITION BY r.competition_category_id, a.year_of_birth) AS field_size_by_year
     FROM results r
     JOIN athletes a ON a.id = r.athlete_id
     JOIN competition_categories cc ON cc.id = r.competition_category_id
@@ -32,6 +34,7 @@ fig_ranks AS (
 )
 SELECT
     ar.competition, ar.date, ar.rank_overall, ar.rank_by_year,
+    ar.field_size, ar.field_size_by_year,
     fr.figure_number, fr.fig_rank_overall, fr.fig_rank_by_year
 FROM all_ranks ar
 JOIN fig_ranks fr ON fr.result_id = ar.result_id
@@ -87,29 +90,38 @@ def athlete_list(conn):
 
 
 def athlete_history(conn, athlete_id):
+    # The window count must run before the athlete filter, hence the subquery.
     return pd.read_sql_query(
-        """SELECT r.id AS result_id, r.competition_category_id AS competition_category_id,
-                  cat.code AS level, c.name AS competition, c.date AS date,
-                  cc.age_group_label AS age_group, r.rank AS rank,
-                  r.total_score AS total_score
-           FROM results r
-           JOIN competition_categories cc ON cc.id = r.competition_category_id
-           JOIN competitions c ON c.id = cc.competition_id
-           JOIN categories cat ON cat.id = cc.category_id
-           WHERE r.athlete_id = ?
-           ORDER BY c.date, r.id""",
-        conn, params=(athlete_id,))
+        """SELECT result_id, competition_category_id, level, competition, date,
+                  age_group, rank, total_score, field_size, athlete_id FROM (
+               SELECT r.id AS result_id, r.athlete_id AS athlete_id,
+                      r.competition_category_id AS competition_category_id,
+                      cat.code AS level, c.name AS competition, c.date AS date,
+                      cc.age_group_label AS age_group, r.rank AS rank,
+                      r.total_score AS total_score,
+                      COUNT(*) OVER (PARTITION BY r.competition_category_id) AS field_size
+               FROM results r
+               JOIN competition_categories cc ON cc.id = r.competition_category_id
+               JOIN competitions c ON c.id = cc.competition_id
+               JOIN categories cat ON cat.id = cc.category_id)
+           WHERE athlete_id = ?
+           ORDER BY date, result_id""",
+        conn, params=(athlete_id,)).drop(columns=["athlete_id"])
 
 
 def athlete_overall_ranks(conn, athlete_id):
     """Overall/by-year ranks per result; works without figure results."""
     return pd.read_sql_query(
-        """SELECT competition, date, rank_overall, rank_by_year FROM (
+        """SELECT competition, date, rank_overall, rank_by_year,
+                  field_size, field_size_by_year FROM (
                SELECT r.athlete_id AS athlete_id, c.name AS competition, c.date AS date,
                       RANK() OVER (PARTITION BY r.competition_category_id
                                    ORDER BY r.total_score DESC) AS rank_overall,
                       RANK() OVER (PARTITION BY r.competition_category_id, a.year_of_birth
-                                   ORDER BY r.total_score DESC) AS rank_by_year
+                                   ORDER BY r.total_score DESC) AS rank_by_year,
+                      COUNT(*) OVER (PARTITION BY r.competition_category_id) AS field_size,
+                      COUNT(*) OVER (PARTITION BY r.competition_category_id,
+                                     a.year_of_birth) AS field_size_by_year
                FROM results r
                JOIN athletes a ON a.id = r.athlete_id
                JOIN competition_categories cc ON cc.id = r.competition_category_id

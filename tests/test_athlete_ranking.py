@@ -69,3 +69,25 @@ def test_style_rank_row_empty_for_nan():
                      "overall_rank": 3, "F1": float("nan")})
     styles = style_rank_row(row, ["F1"])
     assert styles[3] == ""
+
+
+def test_display_table_shows_rank_over_field_size_but_styles_numerically():
+    from ui.components import ranking_display
+    df = pd.DataFrame([
+        {"competition": "Cup A", "date": "2026-01-01", "rank_overall": 3, "rank_by_year": 2,
+         "field_size": 78, "field_size_by_year": 9,
+         "figure_number": "F1", "fig_rank_overall": 1, "fig_rank_by_year": 1},
+        {"competition": "Cup A", "date": "2026-01-01", "rank_overall": 3, "rank_by_year": 2,
+         "field_size": 78, "field_size_by_year": 9,
+         "figure_number": "F2", "fig_rank_overall": 5, "fig_rank_by_year": 4},
+    ])
+    wide, fig_cols = build_ranking_table(df, by_year=False)
+    shown, styler = ranking_display(wide, fig_cols)
+    assert shown.iloc[0]["overall_rank"] == "3 / 78"
+    assert shown.iloc[0]["F1"] == 1
+    assert "field_size" not in shown.columns
+    css = styler._compute().ctx
+    assert "#DCFCE7" in str(css) and "#FEE2E2" in str(css)
+    wide, fig_cols = build_ranking_table(df, by_year=True)
+    shown, _ = ranking_display(wide, fig_cols)
+    assert shown.iloc[0]["overall_rank"] == "2 / 9"

@@ -6,7 +6,8 @@ import streamlit as st
 from db.database import get_connection, init_schema
 from db.queries import (athlete_figure_scores, athlete_history, athlete_list,
                         athlete_overall_ranks, athlete_rankings, result_judge_marks)
-from ui.components import build_ranking_table, stat_card, style_rank_row
+from ui.components import (build_ranking_table, rank_with_field_size, ranking_display,
+                           stat_card)
 from ui.theme import inject_theme, plotly_layout
 
 JUDGE_COLS = [f"judge_{i}" for i in range(1, 8)]
@@ -47,8 +48,10 @@ with c3:
 
 st.subheader("History")
 history = athlete_history(conn, int(athlete_id))
-st.dataframe(history.drop(columns=["result_id", "competition_category_id"]),
-             hide_index=True, width="stretch")
+history_view = history.drop(columns=["result_id", "competition_category_id"])
+history_view["rank"] = [rank_with_field_size(r, n)
+                        for r, n in zip(history["rank"], history["field_size"])]
+st.dataframe(history_view.drop(columns=["field_size"]), hide_index=True, width="stretch")
 
 
 def _legend_below(fig):
@@ -72,12 +75,17 @@ if rank_df.empty:
     else:
         st.caption("No figure rankings available; showing overall rank only.")
         wide = overall.rename(
-            columns={"rank_by_year" if by_year else "rank_overall": "overall_rank"})
+            columns={"rank_by_year" if by_year else "rank_overall": "overall_rank",
+                     "field_size_by_year" if by_year else "field_size": "fs"})
+        shown = wide[["competition", "date"]].copy()
+        shown["overall_rank"] = [rank_with_field_size(r, n)
+                                 for r, n in zip(wide["overall_rank"], wide["fs"])]
+        st.dataframe(shown, hide_index=True, width="stretch")
 else:
     wide, fig_cols = build_ranking_table(rank_df, by_year)
     st.subheader("Figure ranks")
-    st.dataframe(wide.style.apply(style_rank_row, fig_cols=fig_cols, axis=1),
-                 hide_index=True, width="stretch")
+    shown, styler = ranking_display(wide, fig_cols)
+    st.dataframe(styler, hide_index=True, width="stretch")
 
 if wide is not None:
     st.subheader("Positions Over Time")

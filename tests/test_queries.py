@@ -191,3 +191,36 @@ def test_athlete_overall_ranks_without_figure_results():
     assert len(df) == 1
     assert df.iloc[0]["rank_overall"] == 2 and df.iloc[0]["rank_by_year"] == 2
     assert df.iloc[0]["date"] == "2026-01-01"
+
+
+def _field_conn():
+    c = sqlite3.connect(":memory:")
+    init_schema(c)
+    # one category, 3 athletes: two born 2016, one born 2015
+    import_competition(c, _comp("2026-01-01", [(1, "Y", 2015, 70.0), (2, "Z", 2016, 60.0),
+                                               (3, "X", 2016, 50.0)]),
+                       sha256="fs1", filename="fs1.pdf")
+    return c
+
+
+def test_athlete_history_field_size_counts_category_results():
+    c = _field_conn()
+    for name in ("X", "Y", "Z"):
+        df = athlete_history(c, _aid(c, name))
+        assert list(df["field_size"]) == [3]
+        assert "rank" in df.columns and "total_score" in df.columns
+
+
+def test_athlete_rankings_field_size_by_year_counts_same_birth_year_only():
+    c = _field_conn()
+    df = athlete_rankings(c, _aid(c, "X"))
+    assert set(df["field_size"]) == {3}
+    assert set(df["field_size_by_year"]) == {2}
+    df = athlete_rankings(c, _aid(c, "Y"))
+    assert set(df["field_size"]) == {3} and set(df["field_size_by_year"]) == {1}
+
+
+def test_athlete_overall_ranks_field_sizes():
+    c = _field_conn()
+    df = athlete_overall_ranks(c, _aid(c, "Z"))
+    assert df.iloc[0]["field_size"] == 3 and df.iloc[0]["field_size_by_year"] == 2
