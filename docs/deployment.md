@@ -6,8 +6,7 @@
 Internet → Router (port forward) → NAS
            80  → 8080               ├── Caddy (host 8080/8443 → container 80/443)
            443 → 8443               │     • HTTPS via Let's Encrypt
-                                    │     • Import page: password-protected
-                                    │     • Dashboards: public
+                                    │     • Whole site behind basic auth
                                     └── App container (port 8504)
                                           • aquabely-data volume  ← SQLite DB
                                           • aquabely-inbox volume ← PDF uploads
@@ -19,7 +18,7 @@ Internet → Router (port forward) → NAS
 |------|---------|
 | `Dockerfile` | Builds the app image |
 | `docker-compose.yml` | Runs the app + Caddy together |
-| `Caddyfile` | Reverse proxy: HTTPS, auth on Import page |
+| `Caddyfile` | Reverse proxy: HTTPS, basic auth on the whole site |
 | `.env.example` | Template for required environment variables |
 
 ---
@@ -110,7 +109,7 @@ scp -r /Users/tjirsik/Repository/aquabely user@192.168.1.100:~/aquabely
 
 ### Step 6 — Generate the admin password hash
 
-The Import page requires a password. Caddy stores it hashed.
+The whole site requires a password (Caddy basic auth). Caddy stores it hashed.
 
 Run this on the NAS and type your chosen password when prompted:
 ```sh
@@ -185,8 +184,8 @@ The app is now live at `https://rookie-raspbi.cz`.
 
 | URL | Expected |
 |-----|----------|
-| `https://rookie-raspbi.cz` | Athletes dashboard loads |
-| `https://rookie-raspbi.cz/Import` | Browser prompts for username/password |
+| `https://rookie-raspbi.cz` | Browser prompts for username/password, then the home page loads |
+| `https://rookie-raspbi.cz/Import` | Same login applies (every page is protected) |
 
 ---
 
