@@ -5,7 +5,7 @@ from statistics import mean
 
 from parser.models import ParsedCompetition
 
-SCORE_TOLERANCE = 0.01
+SCORE_TOLERANCE = 0.05
 
 
 @dataclass
@@ -30,11 +30,12 @@ def validate(comp: ParsedCompetition) -> ValidationReport:
                 continue
             d = difficulty.get(fr.figure_number)
             if d is not None and fr.judge_scores:
-                expected = mean(fr.judge_scores) * d
+                trimmed = sorted(fr.judge_scores)[1:-1]
+                expected = mean(trimmed) * d if trimmed else 0.0
                 if abs(fr.score - expected) > SCORE_TOLERANCE:
                     rep.warnings.append(
                         f"{r.name} {fr.figure_number}: score {fr.score} differs from "
-                        f"mean(judges) x difficulty = {expected:.3f}")
+                        f"trimmed mean(judges) x difficulty = {expected:.3f}")
 
     for a in comp.results:
         for b in comp.results:

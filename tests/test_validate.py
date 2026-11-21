@@ -31,7 +31,14 @@ def test_missing_figure_row_is_an_error():
 def test_score_mismatch_is_a_warning_not_an_error():
     bad = comp()
     fr = bad.results[0].figure_results[0]
-    bad.results[0].figure_results[0] = replace(fr, score=9.0)  # mean 5.0 x 1.0 = 5.0, so mismatch
+    bad.results[0].figure_results[0] = replace(fr, score=5.06)  # trimmed mean 5.0 x 1.0 = 5.0, off by more than 0.05
     rep = validate(bad)
     assert rep.errors == []
     assert any("score" in w.lower() for w in rep.warnings)
+
+
+def test_trimmed_mean_within_tolerance_gives_no_warning():
+    c = comp()
+    # judges 3,5,5,5,9: plain mean 5.4, trimmed mean 5.0; score 5.04 is within 0.05
+    c.results[0].figure_results[0] = FigureResult("F1", [3.0, 5.0, 5.0, 5.0, 9.0], 5.04, 0.0)
+    assert validate(c).warnings == []
