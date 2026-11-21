@@ -76,3 +76,9 @@ def test_athletes_page_has_one_tab_per_competition(seeded_app_db):
     labels = [t.label for t in at.tabs]
     for comp in comps:
         assert any(comp in lbl for lbl in labels)
+
+
+def test_athletes_page_renders_styled_figure_tables(seeded_app_db):
+    at = AppTest.from_file(str(ROOT / "views/3_athletes.py"), default_timeout=30).run()
+    assert not at.exception
+    assert any("aq-tbl-row" in m.value for m in at.markdown)

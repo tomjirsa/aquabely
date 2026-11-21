@@ -87,6 +87,28 @@ def figure_rank_tab_table(comp_df: pd.DataFrame, by_year: bool):
     return df, df.style.apply(lambda _: styles, axis=None)
 
 
+def figure_rank_tab_html(comp_df: pd.DataFrame, by_year: bool) -> str:
+    """Card-style HTML table (figure, rank, of) for one competition; classes styled in ui/theme.py."""
+    df, _ = figure_rank_tab_table(comp_df, by_year)
+    overall = comp_df["rank_by_year" if by_year else "rank_overall"].iloc[0]
+    rows = []
+    for fig, rank, size in zip(df["figure"], df["rank"], df["of"]):
+        if pd.isna(rank):
+            rank_cell, cls = "", ""
+        else:
+            cls = ("aq-tbl-good" if int(rank) < int(overall)
+                   else "aq-tbl-bad" if int(rank) > int(overall) else "aq-tbl-eq")
+            rank_cell = html.escape(str(int(rank)))
+        size_cell = "" if pd.isna(size) else html.escape(str(int(size)))
+        rows.append(
+            f'<div class="aq-tbl-row"><div class="aq-tbl-cell aq-tbl-name">{html.escape(str(fig))}</div>'
+            f'<div class="aq-tbl-cell"><span class="aq-tbl-rank {cls}">{rank_cell}</span></div>'
+            f'<div class="aq-tbl-cell aq-tbl-of">{size_cell}</div></div>')
+    head = ('<div class="aq-tbl-head"><div class="aq-tbl-cell">Figure</div>'
+            '<div class="aq-tbl-cell">Rank</div><div class="aq-tbl-cell">Of</div></div>')
+    return f'<div class="aq-tbl">{head}{"".join(rows)}</div>'
+
+
 JUDGE_COLS = [f"judge_{i}" for i in range(1, 8)]
 
 

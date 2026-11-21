@@ -6,7 +6,7 @@ import streamlit as st
 from db.database import get_connection, init_schema
 from db.queries import (athlete_figure_detail, athlete_figure_scores, athlete_history, athlete_list,
                         athlete_overall_ranks, athlete_rankings, result_judge_marks)
-from ui.components import (build_ranking_table, figure_rank_tab_table, judge_marks_table, rank_with_field_size, stat_card)
+from ui.components import (build_ranking_table, figure_rank_tab_html, judge_marks_table, rank_with_field_size, stat_card)
 from ui.theme import inject_theme, plotly_layout
 
 JUDGE_COLS = [f"judge_{i}" for i in range(1, 8)]
@@ -92,8 +92,7 @@ else:
             st.markdown("**Overall rank:** " + rank_with_field_size(
                 first["rank_by_year" if by_year else "rank_overall"],
                 first["field_size_by_year" if by_year else "field_size"]))
-            table, styler = figure_rank_tab_table(comp_df, by_year)
-            st.dataframe(styler, hide_index=True, width="stretch")
+            st.markdown(figure_rank_tab_html(comp_df, by_year), unsafe_allow_html=True)
 
 detail = athlete_figure_detail(conn, int(athlete_id))
 if not detail.empty:

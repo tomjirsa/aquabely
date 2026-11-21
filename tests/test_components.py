@@ -30,3 +30,27 @@ def test_trimmed_flags_four_equal():
 def test_judges_markdown():
     md = judges_markdown([6.1, 6.2, 6.4, 6.2, 6.2, 6.2, 6.2])
     assert "~~6.1~~" in md and "~~6.4~~" in md and "avg 6.20" in md
+
+
+def _comp_df(fig_ranks, overall=3, name="Ballet"):
+    import pandas as pd
+    return pd.DataFrame({
+        "figure_name": [name] * len(fig_ranks) if isinstance(name, str) else name,
+        "fig_rank_overall": fig_ranks, "fig_field_size": [10] * len(fig_ranks),
+        "fig_rank_by_year": fig_ranks, "fig_field_size_by_year": [10] * len(fig_ranks),
+        "rank_overall": [overall] * len(fig_ranks), "rank_by_year": [overall] * len(fig_ranks),
+    })
+
+
+def test_figure_rank_tab_html_rows_and_colours():
+    from ui.components import figure_rank_tab_html
+    out = figure_rank_tab_html(_comp_df([1, 5, 3], name=["A", "B", "C"]), False)
+    assert "aq-tbl-row" in out
+    assert "aq-tbl-good" in out and "aq-tbl-bad" in out and "aq-tbl-eq" in out
+
+
+def test_figure_rank_tab_html_escapes_figure_name():
+    from ui.components import figure_rank_tab_html
+    out = figure_rank_tab_html(_comp_df([1], name="<b>x</b>"), False)
+    assert "<b>" not in out
+    assert "&lt;b&gt;" in out
