@@ -23,9 +23,8 @@ def normalize_club(s: str) -> str:
     """Collapse whitespace and normalize casing word by word.
 
     - all-lowercase              -> capitalize        ("cup" -> "Cup")
-    - ALL-CAPS ASCII             -> keep              (abbreviations: FIG, SK, TJ)
-    - ALL-CAPS up to 3 letters   -> keep              (abbreviations with diacritics: VŠ)
-    - ALL-CAPS longer w/ diacrit.-> capitalize        (HOLUBCOVÁ -> Holubcová)
+    - ALL-CAPS up to 3 letters   -> keep              (abbreviations: FIG, SK, TJ, VŠ)
+    - ALL-CAPS longer            -> capitalize        (TESLA -> Tesla, HOLUBCOVÁ -> Holubcová)
     - valid title / hyphen-title -> keep              (Chromíková, Nuler-Trageser)
     - broken mixed case          -> capitalize        (ChROMÍKOVÁ -> Chromíková)
     - lowercase dotted abbrev.   -> keep              (z.s., o.p.s.)
@@ -36,7 +35,7 @@ def normalize_club(s: str) -> str:
         if w == w.lower():
             return w.capitalize()
         if w == w.upper():
-            return w if (w.isascii() or len(w) <= 3) else w.capitalize()
+            return w if len(w) <= 3 else w.capitalize()
         if _is_title(w):
             return w
         return w.capitalize()
