@@ -24,5 +24,5 @@ if int(figures["performances"].sum()) == 0:
 st.dataframe(
     figures[["code", "name", "coefficient", "description_cs", "performances", "competitions"]],
     hide_index=True,
-    use_container_width=True,
+    width="stretch",
 )
