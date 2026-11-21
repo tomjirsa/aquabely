@@ -6,6 +6,15 @@ def test_l3_header_is_detected():
     assert detect_format("Delfinek cup\nBeginner L3 FIG (2019-2014)").format_id == "l3"
 
 
+def test_u12_header_is_detected():
+    text = "BŘECLAVSKÝ POHÁR 2026\nFIGURE DETAILED SCORES - AGE GROUP 12 AND UNDER"
+    assert detect_format(text).format_id == "u12"
+
+
+def test_get_parser_u12_by_id():
+    assert get_parser("u12").level_code == "U12"
+
+
 def test_unknown_header_raises():
     with pytest.raises(UnknownFormatError):
         detect_format("Some other federation document")

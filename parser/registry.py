@@ -2,6 +2,7 @@ from __future__ import annotations
 
 from parser.formats.base import FormatParser
 from parser.formats.l3 import L3Parser
+from parser.formats.u12 import U12Parser
 
 
 class UnknownFormatError(Exception):
@@ -12,7 +13,7 @@ class AmbiguousFormatError(Exception):
     """More than one registered parser recognises the document."""
 
 
-PARSERS: list[FormatParser] = [L3Parser()]
+PARSERS: list[FormatParser] = [L3Parser(), U12Parser()]
 
 
 def detect_format(first_page_text: str) -> FormatParser:
