@@ -4,7 +4,7 @@
 
 ```
 Internet → Router (port forward) → NAS
-           80  → 8080               ├── Caddy (host 8080/8443 → container 80/443)
+           80  → 8080               ├── Caddy (host 8080/8443 → container 80/445)
            443 → 8443               │     • HTTPS via Let's Encrypt
                                     │     • Whole site behind basic auth
                                     └── App container (port 8504)
@@ -139,17 +139,9 @@ AUTH_HASH=$2a$14$...
 
 ---
 
-### Step 8 — (Optional) Migrate an existing database
+### Step 8 — Old databases
 
-If you already have data in a local `aquabely.db`, copy it into the Docker volume before first start:
-
-```sh
-docker volume create aquabely_aquabely-data
-docker run --rm \
-  -v aquabely_aquabely-data:/data \
-  -v $(pwd):/src \
-  alpine cp /src/aquabely.db /data/aquabely.db
-```
+The schema changed in this release and an old database cannot be used. Before the first start, stop the app and delete or rename the old /data/aquabely.db in the aquabely-data volume. The app creates a fresh database on first start.
 
 ---
 
@@ -193,18 +185,7 @@ The app is now live at `https://rookie-raspbi.cz`.
 
 ### Adding PDFs to import
 
-PDFs live in the `aquabely-inbox` Docker volume. Copy a file in from the NAS host:
-
-```sh
-docker run --rm \
-  -v aquabely_aquabely-inbox:/inbox \
-  -v /path/to/your/pdfs:/src \
-  alpine cp /src/result.pdf /inbox/result.pdf
-```
-
-Then open `https://rookie-raspbi.cz/Import` in the browser and click **Import**.
-
-> If your NAS has a file manager that can browse Docker volumes (e.g. Portainer), you can drag and drop files there instead.
+Upload PDFs on the Import page. The inbox is used only to store uploads.
 
 ### Updating the app
 
