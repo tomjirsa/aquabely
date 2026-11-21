@@ -19,7 +19,7 @@ _FIGURE_NAME_ALIASES: dict[str, str] = {
 }
 
 
-def _normalize_figure_name(name: str) -> str:
+def normalize_figure_name(name: str) -> str:
     """Canonical figure name: alias lookup, then title case."""
     stripped = re.sub(r"\s+", " ", name).strip()
     return _FIGURE_NAME_ALIASES.get(stripped.lower(), stripped.title())
@@ -162,7 +162,7 @@ def _parse_figures(lines: list[str]) -> list[FigureDef]:
                     figures[sub_fig] = (sub_name, float(sdm.group(1)))
 
     return [
-        FigureDef(number=k, name=_normalize_figure_name(v[0]), difficulty=v[1])
+        FigureDef(number=k, name=normalize_figure_name(v[0]), difficulty=v[1])
         for k, v in sorted(figures.items())
     ]
 

@@ -119,10 +119,9 @@ else:
     fig_df = athlete_figure_scores(conn, int(athlete_id))
     if not fig_df.empty:
         fig_df = fig_df.sort_values("date")
-        fig_df["figure_label"] = fig_df["figure"] + ": " + fig_df["figure_name"]
+        fig_df["figure_label"] = fig_df["figure_name"]
         fig_df["x_label"] = _x_label(fig_df)
-        fig_order = sorted(fig_df["figure_label"].unique(),
-                           key=lambda x: int(x[1:x.index(":")]))
+        fig_order = list(dict.fromkeys(fig_df["figure_label"]))
         comp_order = list(dict.fromkeys(fig_df["competition"]))
         x_order = list(dict.fromkeys(fig_df["x_label"]))
 
@@ -145,21 +144,20 @@ else:
                                  key="judge_marks_comp")
         marks = result_judge_marks(conn, int(result_id))
         marks = marks.melt(
-            id_vars=["figure", "figure_name"],
+            id_vars=["figure_name"],
             value_vars=[c for c in JUDGE_COLS if marks[c].notna().any()],
             var_name="judge", value_name="mark").dropna(subset=["mark"])
         if marks.empty:
             st.caption("No judge marks for this competition.")
         else:
-            marks["figure_label"] = marks["figure"] + ": " + marks["figure_name"]
+            marks["figure_label"] = marks["figure_name"]
             marks["judge"] = marks["judge"].str.replace("judge_", "J", regex=False)
             fig4 = px.bar(
                 marks, x="figure_label", y="mark", color="judge", barmode="group",
                 title=f"Judge marks - {opts[int(result_id)]}",
                 labels={"figure_label": "Figure", "mark": "Mark", "judge": "Judge"},
-                category_orders={"figure_label": sorted(
-                    marks["figure_label"].unique(),
-                    key=lambda x: int(x[1:x.index(":")]))})
+                category_orders={"figure_label": list(
+                    dict.fromkeys(marks["figure_label"]))})
             fig4.update_layout(yaxis_range=[0, 10])
             st.plotly_chart(plotly_layout(_legend_below(fig4)), width="stretch")
 conn.close()

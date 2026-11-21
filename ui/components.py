@@ -17,18 +17,20 @@ def build_ranking_table(rank_df: pd.DataFrame, by_year: bool) -> tuple[pd.DataFr
     fig_rank_col = "fig_rank_by_year" if by_year else "fig_rank_overall"
     size_col = "field_size_by_year" if by_year else "field_size"
     extra = [size_col] if size_col in rank_df.columns else []
-    df = rank_df[["competition", "date", rank_col, *extra, "figure_number", fig_rank_col]].copy()
+    df = rank_df[["competition", "date", rank_col, *extra, "figure_name", fig_rank_col]].copy()
     df = df.rename(columns={rank_col: "overall_rank", size_col: "field_size",
                             fig_rank_col: "fig_rank"})
     wide = df.pivot_table(
         index=["competition", "date", "overall_rank", *(["field_size"] if extra else [])],
-        columns="figure_number",
+        columns="figure_name",
         values="fig_rank",
         aggfunc="first",
     ).reset_index()
     wide.columns.name = None
     wide = wide.sort_values("date").reset_index(drop=True)
-    fig_cols = [c for c in wide.columns if str(c).startswith("F")]
+    base = {"competition", "date", "overall_rank", "field_size"}
+    fig_cols = list(dict.fromkeys(df["figure_name"]))
+    wide = wide[[c for c in wide.columns if c in base] + fig_cols]
     return wide, fig_cols
 
 

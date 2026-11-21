@@ -42,7 +42,7 @@ def test_u12_header_fields(comp):
     assert comp.date == "2026-11-21"
     assert comp.location == "Brno"
     assert [f.name for f in comp.figures] == [
-        "Straight Ballet Leg", "Barracuda", "Front Ariana", "Tower"]
+        "Ballet Leg Single", "Barracuda", "Front Ariana", "Tower"]
     assert len(comp.results) == 76
 
 
@@ -107,3 +107,16 @@ def test_split_runs_keeps_contiguous_text_together():
 def test_u12_names_are_normalised(comp):
     assert comp.results[0].name == "Frischová Tereza"
     assert comp.results[0].club == "Plavecký Klub Slávia VŠ Plzeň z.s."
+
+
+@needs_sample
+def test_u12_figure_names_have_no_numeric_id(comp):
+    for f in comp.figures:
+        assert not any(ch.isdigit() for ch in f.name), f.name
+        assert not f.name.startswith(":")
+
+
+def test_ballet_leg_variants_share_one_canonical_name():
+    from parser.formats.l3 import normalize_figure_name
+    assert normalize_figure_name("Straight Ballet Leg") == normalize_figure_name(
+        "Ballet Leg Single") == "Ballet Leg Single"

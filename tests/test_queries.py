@@ -169,11 +169,10 @@ def test_athlete_figure_scores_and_judge_marks(conn):
     aid = _aid(conn, "A")
     df = athlete_figure_scores(conn, aid)
     assert len(df) == 1
-    assert (df.iloc[0]["figure"], df.iloc[0]["figure_name"], df.iloc[0]["figure_score"]) == \
-        ("F1", "Ballet", 5.0)
+    assert (df.iloc[0]["figure_name"], df.iloc[0]["figure_score"]) == ("Ballet", 5.0)
     rid = int(athlete_history(conn, aid).iloc[0]["result_id"])
     marks = result_judge_marks(conn, rid)
-    assert len(marks) == 1 and marks.iloc[0]["figure"] == "F1"
+    assert len(marks) == 1 and marks.iloc[0]["figure_name"] == "Ballet"
     assert marks.iloc[0]["judge_1"] == 5.0 and pd.isna(marks.iloc[0]["judge_7"])
 
 
@@ -253,3 +252,35 @@ def test_figure_rank_is_per_figure_not_per_category():
     assert [ranks[(n, "F1")][1] for n in "AB"] == [1, 2]
     assert [ranks[(n, "F2")][1] for n in "AB"] == [2, 1]
     assert ranks[("C", "F1")][1] == 1 and ranks[("C", "F2")][1] == 1
+
+
+def test_same_figure_name_under_different_numbers_is_one_figure():
+    def comp(date, names, scores):
+        res = []
+        for i, (nm, sc) in enumerate(scores):
+            figs = [FigureResult(f"F{k + 1}", [5.0] * 5, v, 0.0) for k, v in enumerate(sc)]
+            res.append(ParsedResult(i + 1, i + 1, nm, "C", "CZE", 2016, sum(sc), 0.0, 0.0, figs))
+        return ParsedCompetition(f"Cup {date}", date, "", "U12", "2014-2019", 2014, 2019, 5,
+                                 [FigureDef(f"F{k + 1}", n, None) for k, n in enumerate(names)],
+                                 res)
+    c = sqlite3.connect(":memory:")
+    init_schema(c)
+    # Ballet is F1 in cup 1 and F2 in cup 2.
+    import_competition(c, comp("2026-01-01", ["Ballet", "Spin"],
+                               [("X", (9.0, 1.0)), ("Y", (8.0, 2.0))]),
+                       sha256="n1", filename="n1.pdf")
+    import_competition(c, comp("2026-02-01", ["Spin", "Ballet"],
+                               [("Y", (9.0, 9.0)), ("X", (1.0, 5.0))]),
+                       sha256="n2", filename="n2.pdf")
+    aid = c.execute("SELECT id FROM athletes WHERE name='X'").fetchone()[0]
+    df = athlete_rankings(c, aid)
+    assert sorted(df["figure_name"].unique()) == ["Ballet", "Spin"]
+    ballet = df[df["figure_name"] == "Ballet"].sort_values("date")
+    # Ranked within each competition only: X first in cup 1 (9 vs 8), second in cup 2 (5 vs 9).
+    assert list(ballet["fig_rank_overall"]) == [1, 2]
+    scores = athlete_figure_scores(c, aid)
+    assert sorted(scores["figure_name"].unique()) == ["Ballet", "Spin"]
+    assert "figure" not in scores.columns
+    from ui.components import build_ranking_table
+    wide, fig_cols = build_ranking_table(df, by_year=False)
+    assert sorted(fig_cols) == ["Ballet", "Spin"] and len(wide) == 2

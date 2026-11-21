@@ -45,6 +45,7 @@ from pathlib import Path
 import pdfplumber
 
 from parser.text import normalize_club, normalize_person_name
+from parser.formats.l3 import normalize_figure_name
 from parser.models import FigureDef, FigureResult, ParsedCompetition, ParsedResult
 
 # Max forward gap (pt) between two characters of the same text run. Word
@@ -108,7 +109,7 @@ def _parse_header(lines: list[str]):
         m = _FIGURE.search(ln)
         if m:
             idx = int(m.group(1))
-            figures[idx] = FigureDef(number=f"F{idx}", name=m.group(3), difficulty=None)
+            figures[idx] = FigureDef(number=f"F{idx}", name=normalize_figure_name(m.group(3)), difficulty=None)
     return name, date, location, judges, [figures[k] for k in sorted(figures)]
 
 

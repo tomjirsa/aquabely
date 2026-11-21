@@ -23,6 +23,7 @@ fig_ranks AS (
     SELECT
         fr.result_id,
         f.number AS figure_number,
+        f.name AS figure_name,
         RANK() OVER (PARTITION BY fr.figure_id
                      ORDER BY fr.score DESC) AS fig_rank_overall,
         RANK() OVER (PARTITION BY fr.figure_id, a.year_of_birth
@@ -35,7 +36,7 @@ fig_ranks AS (
 SELECT
     ar.competition, ar.date, ar.rank_overall, ar.rank_by_year,
     ar.field_size, ar.field_size_by_year,
-    fr.figure_number, fr.fig_rank_overall, fr.fig_rank_by_year
+    fr.figure_number, fr.figure_name, fr.fig_rank_overall, fr.fig_rank_by_year
 FROM all_ranks ar
 JOIN fig_ranks fr ON fr.result_id = ar.result_id
 WHERE ar.athlete_id = ?
@@ -132,7 +133,7 @@ def athlete_overall_ranks(conn, athlete_id):
 
 def athlete_figure_scores(conn, athlete_id):
     return pd.read_sql_query(
-        """SELECT c.date AS date, c.name AS competition, f.number AS figure,
+        """SELECT c.date AS date, c.name AS competition,
                   f.name AS figure_name, fr.score AS figure_score
            FROM figure_results fr
            JOIN results r ON r.id = fr.result_id
@@ -146,7 +147,7 @@ def athlete_figure_scores(conn, athlete_id):
 
 def result_judge_marks(conn, result_id):
     return pd.read_sql_query(
-        """SELECT f.number AS figure, f.name AS figure_name,
+        """SELECT f.name AS figure_name,
                   fr.judge_1, fr.judge_2, fr.judge_3, fr.judge_4,
                   fr.judge_5, fr.judge_6, fr.judge_7
            FROM figure_results fr
