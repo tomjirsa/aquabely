@@ -257,6 +257,19 @@ def athlete_figure_detail(conn, athlete_id):
         conn, params=(athlete_id,))
 
 
+def athlete_figure_row(conn, athlete_id, competition_category_id, figure_name):
+    return pd.read_sql_query(
+        f"""SELECT fc.name AS figure_name, fc.coefficient AS coefficient, {_JUDGES},
+                   fr.score AS figure_score, fr.penalty AS figure_penalty
+            FROM figure_results fr
+            JOIN results r ON r.id = fr.result_id
+            JOIN figures f ON f.id = fr.figure_id
+            JOIN figure_catalogue fc ON fc.id = f.catalogue_id
+            WHERE r.athlete_id = ? AND r.competition_category_id = ? AND fc.name = ?
+            ORDER BY f.id""",
+        conn, params=(athlete_id, competition_category_id, figure_name))
+
+
 def catalogue_figures(conn, level):
     # The inner query is pre-sorted by date so GROUP_CONCAT lists competitions chronologically.
     return pd.read_sql_query(
