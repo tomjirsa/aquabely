@@ -4,10 +4,9 @@
 
 ```
 Internet → Router (port forward) → NAS
-           80  → 8080               ├── Caddy (host 8080/8443 → container 80/443)
+           80  → 8080               ├── Caddy (host 8080/8443 → container 80/445)
            443 → 8443               │     • HTTPS via Let's Encrypt
-                                    │     • Import page: password-protected
-                                    │     • Dashboards: public
+                                    │     • Whole site behind basic auth
                                     └── App container (port 8504)
                                           • aquabely-data volume  ← SQLite DB
                                           • aquabely-inbox volume ← PDF uploads
@@ -19,7 +18,7 @@ Internet → Router (port forward) → NAS
 |------|---------|
 | `Dockerfile` | Builds the app image |
 | `docker-compose.yml` | Runs the app + Caddy together |
-| `Caddyfile` | Reverse proxy: HTTPS, auth on Import page |
+| `Caddyfile` | Reverse proxy: HTTPS, basic auth on the whole site |
 | `.env.example` | Template for required environment variables |
 
 ---
@@ -110,7 +109,7 @@ scp -r /Users/tjirsik/Repository/aquabely user@192.168.1.100:~/aquabely
 
 ### Step 6 — Generate the admin password hash
 
-The Import page requires a password. Caddy stores it hashed.
+The whole site requires a password (Caddy basic auth). Caddy stores it hashed.
 
 Run this on the NAS and type your chosen password when prompted:
 ```sh
@@ -140,17 +139,9 @@ AUTH_HASH=$2a$14$...
 
 ---
 
-### Step 8 — (Optional) Migrate an existing database
+### Step 8 — Old databases
 
-If you already have data in a local `aquabely.db`, copy it into the Docker volume before first start:
-
-```sh
-docker volume create aquabely_aquabely-data
-docker run --rm \
-  -v aquabely_aquabely-data:/data \
-  -v $(pwd):/src \
-  alpine cp /src/aquabely.db /data/aquabely.db
-```
+The schema changed in this release and an old database cannot be used. Before the first start, stop the app and delete or rename the old /data/aquabely.db in the aquabely-data volume. The app creates a fresh database on first start.
 
 ---
 
@@ -185,8 +176,8 @@ The app is now live at `https://rookie-raspbi.cz`.
 
 | URL | Expected |
 |-----|----------|
-| `https://rookie-raspbi.cz` | Athletes dashboard loads |
-| `https://rookie-raspbi.cz/Import` | Browser prompts for username/password |
+| `https://rookie-raspbi.cz` | Browser prompts for username/password, then the home page loads |
+| `https://rookie-raspbi.cz/Import` | Same login applies (every page is protected) |
 
 ---
 
@@ -194,18 +185,7 @@ The app is now live at `https://rookie-raspbi.cz`.
 
 ### Adding PDFs to import
 
-PDFs live in the `aquabely-inbox` Docker volume. Copy a file in from the NAS host:
-
-```sh
-docker run --rm \
-  -v aquabely_aquabely-inbox:/inbox \
-  -v /path/to/your/pdfs:/src \
-  alpine cp /src/result.pdf /inbox/result.pdf
-```
-
-Then open `https://rookie-raspbi.cz/Import` in the browser and click **Import**.
-
-> If your NAS has a file manager that can browse Docker volumes (e.g. Portainer), you can drag and drop files there instead.
+Upload PDFs on the Import page. The inbox is used only to store uploads.
 
 ### Updating the app
 

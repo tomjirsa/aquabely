@@ -1,14 +1,16 @@
-import hashlib
+from __future__ import annotations
+
 import re
-from dataclasses import dataclass, field
 from pathlib import Path
 
 import pdfplumber
 
+from parser.text import normalize_club, normalize_person_name
+from parser.models import FigureDef, FigureResult, ParsedCompetition, ParsedResult
+
 # Map known name variants (lowercased) to a canonical title-cased name.
 # Add entries here when new PDFs introduce different wording for the same figure.
 _FIGURE_NAME_ALIASES: dict[str, str] = {
-    "straight ballet leg": "Ballet Leg Single",
     "front back layout position to surface arch position to back layout position": "Back Layout to Surface Arch to Back Layout Position",
     "from back layout position to surface arch position to back layout position": "Back Layout to Surface Arch to Back Layout Position",
     "kipnus": "Kipnus",
@@ -16,78 +18,10 @@ _FIGURE_NAME_ALIASES: dict[str, str] = {
 }
 
 
-def _title(s: str) -> str:
-    """Collapse whitespace and normalize casing word by word.
-
-    - all-lowercase              → capitalize        ("cup" → "Cup")
-    - ALL-CAPS ASCII             → keep              (abbreviations: FIG, SK, TJ)
-    - ALL-CAPS with diacritics   → capitalize        (HOLUBCOVÁ → Holubcová)
-    - valid title / hyphen-title → keep              (Chromíková, Nuler-Trageser)
-    - broken mixed case          → capitalize        (ChROMÍKOVÁ → Chromíková)
-    """
-    s = re.sub(r"\s+", " ", s).strip()
-
-    def _is_title(w: str) -> bool:
-        """True when every hyphen-segment starts uppercase and continues lowercase."""
-        return all(
-            seg and seg[0].isupper() and seg[1:] == seg[1:].lower()
-            for seg in w.split("-")
-        )
-
-    def _cap(w: str) -> str:
-        if w == w.lower():
-            return w.capitalize()
-        if w == w.upper():
-            return w if w.isascii() else w.capitalize()
-        if _is_title(w):
-            return w
-        return w.capitalize()  # broken mixed case
-
-    return " ".join(_cap(w) for w in s.split())
-
-
-def _normalize_figure_name(name: str) -> str:
+def normalize_figure_name(name: str) -> str:
     """Canonical figure name: alias lookup, then title case."""
     stripped = re.sub(r"\s+", " ", name).strip()
     return _FIGURE_NAME_ALIASES.get(stripped.lower(), stripped.title())
-
-
-@dataclass
-class FigureDef:
-    number: str
-    name: str
-    difficulty: float
-
-
-@dataclass
-class FigureResult:
-    figure_number: str
-    judge_scores: list
-    score: float
-    penalty: float
-
-
-@dataclass
-class AthleteResult:
-    rank: int
-    entry_number: int
-    name: str
-    club: str
-    country: str
-    yob: int
-    total_score: float
-    penalty: float
-    points_behind: float
-    figure_results: list = field(default_factory=list)
-
-
-@dataclass
-class ParsedPDF:
-    competition_name: str
-    date: str
-    category_name: str
-    figures: list
-    results: list
 
 
 # Matches a figure score line with 5-7 judge scores followed by total score and penalty.
@@ -113,21 +47,6 @@ _ENTRY_NAME = re.compile(r"^(\d+)\s*-\s*(.*?)\s+F\d+\s")
 _CLUB_LINE = re.compile(r"^(.*?)\s+F\d+\s")
 
 
-def parse_pdf(path: Path) -> "ParsedPDF":
-    all_lines: list[str] = []
-
-    with pdfplumber.open(path) as pdf:
-        for page in pdf.pages:
-            text = page.extract_text() or ""
-            all_lines.extend(text.split("\n"))
-
-    comp_name, date, category = _parse_header(all_lines)
-    figures = _parse_figures(all_lines)
-    results = _parse_results(all_lines, figures)
-
-    return ParsedPDF(comp_name, date, category, figures, results)
-
-
 def _parse_header(lines: list[str]):
     """Extract competition name, date, and category from the first page header."""
     # Filter out empty lines and known non-header lines
@@ -141,7 +60,7 @@ def _parse_header(lines: list[str]):
         and ln != "behind"
     ]
 
-    comp_name = _title(clean[0]) if clean else "Unknown"
+    comp_name = normalize_club(clean[0]) if clean else "Unknown"
     date, category = "", ""
 
     if len(clean) > 1:
@@ -153,12 +72,12 @@ def _parse_header(lines: list[str]):
         if m:
             day, month, year = m.group(1).split(".")
             date = f"{year}-{month}-{day}"
-            category = _title(m.group(2).strip().strip("-").strip())
+            category = normalize_club(m.group(2).strip().strip("-").strip())
 
     return comp_name, date, category
 
 
-def _parse_figures(lines: list[str]) -> list:
+def _parse_figures(lines: list[str]) -> list[FigureDef]:
     """Parse figure definitions from the header area of page 1."""
     # Find lines before the data area (before first rank line)
     header_lines: list[str] = []
@@ -242,12 +161,12 @@ def _parse_figures(lines: list[str]) -> list:
                     figures[sub_fig] = (sub_name, float(sdm.group(1)))
 
     return [
-        FigureDef(number=k, name=_normalize_figure_name(v[0]), difficulty=v[1])
+        FigureDef(number=k, name=normalize_figure_name(v[0]), difficulty=v[1], code=None)
         for k, v in sorted(figures.items())
     ]
 
 
-def _parse_results(lines: list[str], figures: list) -> list:
+def _parse_results(lines: list[str], figures: list[FigureDef]) -> list[FigureDef]:
     """Parse athlete results from all text lines."""
     n_figures = len(figures) or 4
 
@@ -267,7 +186,7 @@ def _parse_results(lines: list[str], figures: list) -> list:
         if _RANK_LINE.match(line.strip()):
             rank_indices.append(idx)
 
-    results: list[AthleteResult] = []
+    results: list[ParsedResult] = []
 
     for rank_idx in rank_indices:
         rank_line = lines[rank_idx].strip()
@@ -302,13 +221,13 @@ def _parse_results(lines: list[str], figures: list) -> list:
         nm = _ENTRY_NAME.match(name_line)
         if nm:
             entry_number = int(nm.group(1))
-            name = _title(nm.group(2))
+            name = normalize_person_name(nm.group(2))
 
         # Parse club from the club line
         club = ""
         cm = _CLUB_LINE.match(club_line)
         if cm:
-            club = _title(cm.group(1))
+            club = normalize_club(cm.group(1))
 
         # Build the dynamic athlete block for figure-score scanning.
         # n_figures//2 standalone lines appear before the name line;
@@ -325,7 +244,7 @@ def _parse_results(lines: list[str], figures: list) -> list:
             fsm = _FIG_SCORE.search(fig_line)
             if fsm:
                 fig_num = fsm.group(1)
-                judge_scores = [float(fsm.group(k)) for k in range(2, 8) if fsm.group(k) is not None]
+                judge_scores = [float(fsm.group(k)) for k in range(2, 9) if fsm.group(k) is not None]
                 score = float(fsm.group(9))
                 penalty = float(fsm.group(10))
                 figure_results.append(
@@ -340,13 +259,13 @@ def _parse_results(lines: list[str], figures: list) -> list:
         total_penalty = sum(fr.penalty for fr in figure_results)
 
         results.append(
-            AthleteResult(
+            ParsedResult(
                 rank=rank,
                 entry_number=entry_number,
                 name=name,
                 club=club,
                 country=country,
-                yob=yob,
+                year_of_birth=yob,
                 total_score=total_score,
                 penalty=total_penalty,
                 points_behind=points_behind,
@@ -357,8 +276,49 @@ def _parse_results(lines: list[str], figures: list) -> list:
     return results
 
 
-def file_sha256(path: Path) -> str:
-    """Return the hex SHA-256 digest of the file at *path*."""
-    h = hashlib.sha256()
-    h.update(Path(path).read_bytes())
-    return h.hexdigest()
+_YEARS = re.compile(r"\((\d{4})\s*-\s*(\d{4})\)")
+
+
+class L3Parser:
+    format_id = "l3"
+    level_code = "L3"
+
+    def detect(self, first_page_text: str) -> bool:
+        return "Beginner L3" in first_page_text or "L3 FIG" in first_page_text
+
+    def parse(self, pdf_path: Path) -> ParsedCompetition:
+        all_lines: list[str] = []
+        with pdfplumber.open(pdf_path) as pdf:
+            for page in pdf.pages:
+                all_lines.extend((page.extract_text() or "").splitlines())
+
+        name, date, category = _parse_header(all_lines)
+        figures = _parse_figures(all_lines)
+        results = _parse_results(all_lines, figures)
+
+        year_from = year_to = None
+        label = ""
+        ym = _YEARS.search(category)
+        if ym:
+            year_from, year_to = sorted((int(ym.group(1)), int(ym.group(2))))
+            label = f"{year_from}–{year_to}"
+
+        judges = max(
+            (len(fr.judge_scores) for r in results for fr in r.figure_results),
+            default=0,
+        )
+        return ParsedCompetition(
+            name=name,
+            date=date,
+            location="",
+            level_code=self.level_code,
+            age_group_label=label,
+            birth_year_from=year_from,
+            birth_year_to=year_to,
+            judges_per_figure=judges,
+            figures=figures,
+            results=results,
+        )
+
+
+parser = L3Parser()
