@@ -63,6 +63,15 @@ body {
 .aq-tbl-bad { background: var(--aq-bad-bg); color: var(--aq-bad-fg); }
 .aq-tbl-eq { background: var(--aq-eq-bg); color: var(--aq-eq-fg); }
 .aq-stat-value { color: var(--aq-primary); font-size: 1.6rem; font-weight: 600; }
+.aq-fig-wrap { overflow-x: auto; border: 1px solid var(--aq-border); border-radius: 10px; }
+.aq-fig-table { width: 100%; border-collapse: collapse; font-size: 14px; min-width: 620px; font-variant-numeric: tabular-nums; }
+.aq-fig-table th { background: var(--aq-surface); color: var(--aq-muted); font-weight: 500; padding: 12px 14px; text-align: right; }
+.aq-fig-table td { border-top: 1px solid var(--aq-border); padding: 12px 14px; text-align: right; }
+.aq-fig-table th:first-child, .aq-fig-table td:first-child { text-align: left; }
+.aq-fig-table td:first-child { font-weight: 500; }
+.aq-fig-table s { color: var(--aq-muted); }
+.aq-fig-table tfoot td { font-weight: 600; background: var(--aq-surface); }
+.aq-fig-table .aq-fig-score { color: var(--aq-primary); font-weight: 600; }
 </style>
 """
 

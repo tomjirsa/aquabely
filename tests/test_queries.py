@@ -360,3 +360,12 @@ def test_athlete_rankings_figure_field_sizes():
     row = athlete_rankings(c, aid).iloc[0]
     assert row["fig_field_size"] == 3
     assert row["fig_field_size_by_year"] == 2
+
+
+def test_athlete_summaries_counts_results_and_scores(conn):
+    from db.queries import athlete_summaries, athlete_list
+    df = athlete_summaries(conn).merge(athlete_list(conn), on="id")
+    assert not df.empty
+    assert (df["competitions"] >= 0).all()
+    assert set(df.columns) >= {"competitions", "best_score", "avg_score"}
+

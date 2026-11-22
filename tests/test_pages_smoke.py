@@ -17,10 +17,11 @@ def test_page_renders_on_empty_database(page, tmp_path, monkeypatch):
     assert not at.exception
 
 
-def test_athletes_page_renders_figure_detail_with_seeded_data(seeded_app_db):
+def test_athletes_page_has_overview_competitions_and_history_tabs(seeded_app_db):
     at = AppTest.from_file(str(ROOT / "views/3_athletes.py"), default_timeout=30).run()
     assert not at.exception
-    assert any("Figure detail" in h.value for h in at.subheader)
+    labels = [t.label for t in at.tabs]
+    assert {"Overview", "Competitions", "History"} <= set(labels)
 
 
 def test_figures_page_renders_on_empty_database(tmp_path, monkeypatch):
@@ -67,9 +68,9 @@ def test_athletes_page_has_one_tab_per_competition(seeded_app_db):
     at = AppTest.from_file(str(ROOT / "views/3_athletes.py"), default_timeout=30).run()
     assert not at.exception
     from db.database import get_connection
-    from db.queries import athlete_rankings
+    from db.queries import athlete_rankings, athlete_list
     conn = get_connection()
-    aid = int(at.selectbox[0].value)
+    aid = int(athlete_list(conn).iloc[0]["id"])
     comps = set(athlete_rankings(conn, aid)["competition"])
     conn.close()
     assert comps
@@ -78,7 +79,21 @@ def test_athletes_page_has_one_tab_per_competition(seeded_app_db):
         assert any(comp in lbl for lbl in labels)
 
 
-def test_athletes_page_renders_styled_figure_tables(seeded_app_db):
+def test_athletes_page_figure_tables_strike_extremes(seeded_app_db):
     at = AppTest.from_file(str(ROOT / "views/3_athletes.py"), default_timeout=30).run()
     assert not at.exception
-    assert any("aq-tbl-row" in m.value for m in at.markdown)
+    assert any("aq-fig-table" in m.value for m in at.markdown)
+
+
+def test_athletes_page_history_has_one_tab_per_figure(seeded_app_db):
+    at = AppTest.from_file(str(ROOT / "views/3_athletes.py"), default_timeout=30).run()
+    assert not at.exception
+    from db.database import get_connection
+    from db.queries import athlete_list, athlete_figure_detail
+    conn = get_connection()
+    aid = int(athlete_list(conn).iloc[0]["id"])
+    figures = set(athlete_figure_detail(conn, aid)["figure_name"])
+    conn.close()
+    assert figures
+    labels = {t.label for t in at.tabs}
+    assert figures <= labels

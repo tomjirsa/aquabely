@@ -54,3 +54,40 @@ def test_figure_rank_tab_html_escapes_figure_name():
     out = figure_rank_tab_html(_comp_df([1], name="<b>x</b>"), False)
     assert "<b>" not in out
     assert "&lt;b&gt;" in out
+
+
+def test_figure_marks_table_strikes_highest_and_lowest_and_averages_the_rest():
+    import pandas as pd
+    from ui.components import figure_marks_table_html
+
+    df = pd.DataFrame([{
+        "figure_name": "Ballet", "coefficient": 2.0,
+        "judge_1": 7.0, "judge_2": 8.0, "judge_3": 6.0, "judge_4": 7.5, "judge_5": None,
+        "figure_score": 14.0, "fig_rank": 1, "fig_field_size": 3,
+    }])
+    out = figure_marks_table_html(df, ["judge_1", "judge_2", "judge_3", "judge_4"], overall_rank=1)
+    assert "<s>6.0</s>" in out and "<s>8.0</s>" in out
+    assert "<s>7.0</s>" not in out and "<s>7.5</s>" not in out
+    assert "7.25" in out  # mean of 7.0 and 7.5
+    assert "aq-fig-score" in out and "14.00" in out
+
+
+
+
+def test_render_column_filters_filters_text_and_numeric_columns():
+    from streamlit.testing.v1 import AppTest
+
+    def app():
+        import pandas as pd
+        import streamlit as st
+        from ui.components import render_column_filters
+        df = pd.DataFrame({"club": ["A", "B", "A"], "rank": [1, 2, 3], "total_score": [10.0, 20.0, 30.0]})
+        out = render_column_filters(df, key="t")
+        st.text(f"rows={len(out)}")
+
+    at = AppTest.from_function(app, default_timeout=20).run()
+    assert not at.exception
+    assert at.text[0].value == "rows=3"
+
+    at.multiselect[0].set_value(["A"]).run()
+    assert at.text[0].value == "rows=2"

@@ -1,56 +1,16 @@
 import pandas as pd
-import plotly.express as px
 import plotly.graph_objects as go
 import streamlit as st
 
 from db.database import get_connection, init_schema
-from db.queries import (athlete_figure_detail, athlete_figure_scores, athlete_history, athlete_list,
-                        athlete_overall_ranks, athlete_rankings, result_judge_marks)
-from ui.components import (build_ranking_table, figure_rank_tab_html, judge_marks_table, rank_with_field_size, stat_card)
+from db.queries import (athlete_figure_detail, athlete_history, athlete_list, athlete_overall_ranks,
+                        athlete_rankings, athlete_summaries)
+from ui.components import (JUDGE_COLORS, build_ranking_table, figure_marks_table_html, judge_mark_values,
+                           rank_with_field_size, stat_card, trimmed_flags)
 from ui.theme import inject_theme, plotly_layout
 
 JUDGE_COLS = [f"judge_{i}" for i in range(1, 8)]
-
-inject_theme()
-st.title("Athletes")
-
-conn = get_connection()
-init_schema(conn)
-
-athletes = athlete_list(conn)
-if athletes.empty:
-    st.info("No athletes yet. Use the Import page to add results.")
-    conn.close()
-    st.stop()
-
-query = st.text_input("Search by name").strip().lower()
-found = athletes
-if query:
-    found = athletes[athletes["name"].str.lower().str.contains(query, regex=False)]
-if found.empty:
-    st.warning("No athlete matches that search.")
-    conn.close()
-    st.stop()
-
-labels = {int(i): f"{n} ({c})" for i, n, c in zip(found["id"], found["name"], found["club"])}
-athlete_id = st.selectbox("Athlete", list(labels), format_func=labels.get)
-a = athletes[athletes["id"] == athlete_id].iloc[0]
-
-c1, c2, c3 = st.columns(3)
-with c1:
-    stat_card("Name", str(a["name"]))
-with c2:
-    stat_card("Club", str(a["club"]))
-with c3:
-    yob = a["year_of_birth"]
-    stat_card("Born", "n/a" if pd.isna(yob) else str(int(yob)))
-
-st.subheader("History")
-history = athlete_history(conn, int(athlete_id))
-history_view = history.drop(columns=["result_id", "competition_category_id"])
-history_view["rank"] = [rank_with_field_size(r, n)
-                        for r, n in zip(history["rank"], history["field_size"])]
-st.dataframe(history_view.drop(columns=["field_size"]), hide_index=True, width="stretch")
+FIG_RANK_COLS = ["fig_rank_overall", "fig_rank_by_year", "fig_field_size", "fig_field_size_by_year"]
 
 
 def _legend_below(fig):
@@ -63,113 +23,166 @@ def _x_label(df):
     return df["competition"] + "<br>" + df["date"]
 
 
-rank_df = athlete_rankings(conn, int(athlete_id))
-by_year = st.toggle("Rank within birth year", value=False)
-wide = None
-fig_cols = []
-if rank_df.empty:
-    overall = athlete_overall_ranks(conn, int(athlete_id))
-    if overall.empty:
-        st.caption("No rankings available for this athlete.")
+def _score_text(value):
+    return "n/a" if pd.isna(value) else f"{value:.2f}"
+
+
+inject_theme()
+st.title("Athletes")
+
+conn = get_connection()
+init_schema(conn)
+
+athletes = athlete_list(conn).merge(athlete_summaries(conn), on="id")
+if athletes.empty:
+    st.info("No athletes yet. Use the Import page to add results.")
+    conn.close()
+    st.stop()
+
+query = st.text_input("Search athletes or clubs").strip().lower()
+found = athletes
+if query:
+    found = athletes[athletes["name"].str.lower().str.contains(query, regex=False)
+                     | athletes["club"].str.lower().str.contains(query, regex=False)]
+if found.empty:
+    st.warning("No athlete matches that search.")
+    conn.close()
+    st.stop()
+
+table = found[["name", "club", "competitions", "best_score"]].rename(columns={
+    "name": "Athlete", "club": "Club", "competitions": "Competitions", "best_score": "Best score"})
+event = st.dataframe(
+    table, hide_index=True, width="stretch", on_select="rerun", selection_mode="single-row",
+    key="athlete_table", column_config={"Best score": st.column_config.NumberColumn(format="%.2f")})
+picked = event.selection.rows
+row_idx = picked[0] if picked and picked[0] < len(found) else 0
+a = found.iloc[row_idx]
+athlete_id = int(a["id"])
+
+history = athlete_history(conn, athlete_id)
+rank_df = athlete_rankings(conn, athlete_id)
+detail = athlete_figure_detail(conn, athlete_id)
+
+st.subheader(str(a["name"]))
+c1, c2, c3, c4 = st.columns(4)
+with c1:
+    stat_card("Club", str(a["club"]))
+with c2:
+    yob = a["year_of_birth"]
+    stat_card("Born", "n/a" if pd.isna(yob) else str(int(yob)))
+with c3:
+    stat_card("Competitions", str(int(a["competitions"])))
+with c4:
+    stat_card("Best / average", f"{_score_text(a['best_score'])} / "
+              f"{_score_text(history['total_score'].mean() if not history.empty else None)}")
+
+overview_tab, competitions_tab, history_tab = st.tabs(["Overview", "Competitions", "History"])
+
+with overview_tab:
+    if history.empty:
+        st.info("No results found for this athlete.")
     else:
-        st.caption("No figure rankings available; showing overall rank only.")
-        wide = overall.rename(
-            columns={"rank_by_year" if by_year else "rank_overall": "overall_rank",
-                     "field_size_by_year" if by_year else "field_size": "fs"})
-        shown = wide[["competition", "date"]].copy()
-        shown["overall_rank"] = [rank_with_field_size(r, n)
-                                 for r, n in zip(wide["overall_rank"], wide["fs"])]
-        st.dataframe(shown, hide_index=True, width="stretch")
-else:
-    wide, fig_cols = build_ranking_table(rank_df, by_year)
-    st.subheader("Figure ranks")
-    comps = list(dict.fromkeys(zip(rank_df["date"], rank_df["competition"])))
-    tabs = st.tabs([f"{name} ({date})" for date, name in comps])
-    for tab, (date, name) in zip(tabs, comps):
-        comp_df = rank_df[(rank_df["date"] == date) & (rank_df["competition"] == name)]
-        with tab:
-            first = comp_df.iloc[0]
-            st.markdown("**Overall rank:** " + rank_with_field_size(
-                first["rank_by_year" if by_year else "rank_overall"],
-                first["field_size_by_year" if by_year else "field_size"]))
-            st.markdown(figure_rank_tab_html(comp_df, by_year), unsafe_allow_html=True)
+        history_view = history.drop(columns=["result_id", "competition_category_id"])
+        history_view["rank"] = [rank_with_field_size(r, n)
+                                for r, n in zip(history["rank"], history["field_size"])]
+        st.dataframe(history_view.drop(columns=["field_size"]), hide_index=True, width="stretch")
 
-detail = athlete_figure_detail(conn, int(athlete_id))
-if not detail.empty:
-    st.subheader("Figure detail")
-    st.markdown(judge_marks_table(detail))
+        hist = history.sort_values("date").copy()
+        hist["x_label"] = _x_label(hist)
+        fig1 = go.Figure(go.Scatter(x=hist["x_label"], y=hist["total_score"], mode="lines+markers",
+                                    name="Score"))
+        fig1.update_layout(title="Total score over time", yaxis_title="Score", xaxis_title="")
+        fig1.update_xaxes(type="category")
+        st.plotly_chart(plotly_layout(fig1), width="stretch")
 
-if wide is not None:
-    st.subheader("Positions Over Time")
-    chart = wide.copy()
-    chart["x_label"] = _x_label(chart)
-    x_order = list(dict.fromkeys(chart.sort_values("date")["x_label"]))
-    fig = go.Figure()
-    fig.add_trace(go.Scatter(x=chart["x_label"], y=chart["overall_rank"],
-                             mode="lines+markers", name="Overall",
-                             line=dict(width=3)))
-    for col in fig_cols:
-        fig.add_trace(go.Scatter(x=chart["x_label"], y=chart[col].astype(float), mode="lines+markers",
-                                 name=col, line=dict(width=1.5, dash="dash")))
-    fig.update_yaxes(autorange="reversed", title="Rank (lower = better)")
-    fig.update_xaxes(type="category", categoryorder="array", categoryarray=x_order)
-    _legend_below(fig)
-    st.plotly_chart(plotly_layout(fig), width="stretch")
-
-st.subheader("Scores")
-if history.empty:
-    st.info("No results found for this athlete.")
-else:
-    hist = history.sort_values("date").copy()
-    hist["x_label"] = _x_label(hist)
-    fig1 = px.line(hist, x="x_label", y="total_score", markers=True,
-                   title="Total score over time",
-                   labels={"total_score": "Score", "x_label": ""},
-                   category_orders={"x_label": list(dict.fromkeys(hist["x_label"]))})
-    st.plotly_chart(plotly_layout(_legend_below(fig1)), width="stretch")
-
-    fig_df = athlete_figure_scores(conn, int(athlete_id))
-    if not fig_df.empty:
-        fig_df = fig_df.sort_values("date")
-        fig_df["figure_label"] = fig_df["figure_name"]
-        fig_df["x_label"] = _x_label(fig_df)
-        fig_order = list(dict.fromkeys(fig_df["figure_label"]))
-        comp_order = list(dict.fromkeys(fig_df["competition"]))
-        x_order = list(dict.fromkeys(fig_df["x_label"]))
-
-        fig2 = px.line(fig_df, x="x_label", y="figure_score", color="figure_label",
-                       markers=True, title="Figure scores over time",
-                       labels={"figure_score": "Score", "x_label": "", "figure_label": "Figure"},
-                       category_orders={"figure_label": fig_order, "x_label": x_order})
+        if rank_df.empty:
+            overall = athlete_overall_ranks(conn, athlete_id)
+            wide = overall.rename(columns={"rank_overall": "overall_rank"})
+            fig_cols = []
+        else:
+            wide, fig_cols = build_ranking_table(rank_df, False)
+        chart = wide.copy()
+        chart["x_label"] = _x_label(chart)
+        x_order = list(dict.fromkeys(chart.sort_values("date")["x_label"]))
+        fig2 = go.Figure()
+        fig2.add_trace(go.Scatter(x=chart["x_label"], y=chart["overall_rank"],
+                                  mode="lines+markers", name="Overall", line=dict(width=3)))
+        for col in fig_cols:
+            fig2.add_trace(go.Scatter(x=chart["x_label"], y=chart[col].astype(float), mode="lines+markers",
+                                      name=col, line=dict(width=1.5, dash="dash")))
+        fig2.update_yaxes(autorange="reversed", title="Rank (lower = better)")
+        fig2.update_xaxes(type="category", categoryorder="array", categoryarray=x_order)
         st.plotly_chart(plotly_layout(_legend_below(fig2)), width="stretch")
 
-        fig3 = px.bar(fig_df, x="competition", y="figure_score", color="figure_label",
-                      barmode="group", title="Figure scores per competition",
-                      labels={"figure_label": "Figure", "figure_score": "Score"},
-                      category_orders={"figure_label": fig_order, "competition": comp_order})
-        st.plotly_chart(plotly_layout(_legend_below(fig3)), width="stretch")
+with competitions_tab:
+    ranking = st.pills("Ranking", ["Overall", "By year"], default="Overall", key="ranking_mode") or "Overall"
+    by_year = ranking == "By year"
+    if history.empty:
+        st.info("No results found for this athlete.")
+    else:
+        fig_ranks = (rank_df[["competition", "date", "figure_name", *FIG_RANK_COLS]]
+                     .drop_duplicates(["competition", "date", "figure_name"])
+                     if not rank_df.empty
+                     else pd.DataFrame(columns=["competition", "date", "figure_name", *FIG_RANK_COLS]))
+        merged = detail.merge(fig_ranks, on=["competition", "date", "figure_name"], how="left")
+        rank_col = "fig_rank_by_year" if by_year else "fig_rank_overall"
+        size_col = "fig_field_size_by_year" if by_year else "fig_field_size"
 
-        st.subheader("Judge marks per figure")
-        opts = {int(r.result_id): f"{r.competition} ({r.age_group}, {r.date})"
-                for r in history.itertuples()}
-        result_id = st.selectbox("Competition", list(opts), format_func=opts.get,
-                                 key="judge_marks_comp")
-        marks = result_judge_marks(conn, int(result_id))
-        marks = marks.melt(
-            id_vars=["figure_name"],
-            value_vars=[c for c in JUDGE_COLS if marks[c].notna().any()],
-            var_name="judge", value_name="mark").dropna(subset=["mark"])
-        if marks.empty:
-            st.caption("No judge marks for this competition.")
-        else:
-            marks["figure_label"] = marks["figure_name"]
-            marks["judge"] = marks["judge"].str.replace("judge_", "J", regex=False)
-            fig4 = px.bar(
-                marks, x="figure_label", y="mark", color="judge", barmode="group",
-                title=f"Judge marks - {opts[int(result_id)]}",
-                labels={"figure_label": "Figure", "mark": "Mark", "judge": "Judge"},
-                category_orders={"figure_label": list(
-                    dict.fromkeys(marks["figure_label"]))})
-            fig4.update_layout(yaxis_range=[0, 10])
-            st.plotly_chart(plotly_layout(_legend_below(fig4)), width="stretch")
+        comps = list(dict.fromkeys(zip(history["date"], history["competition"])))
+        for tab, (date, name) in zip(st.tabs([f"{comp} ({day})" for day, comp in comps]), comps):
+            with tab:
+                rank_row = rank_df[(rank_df["competition"] == name) & (rank_df["date"] == date)]
+                if rank_row.empty:
+                    past = history[(history["competition"] == name) & (history["date"] == date)].iloc[0]
+                    overall_rank, size = past["rank"], past["field_size"]
+                elif by_year:
+                    overall_rank = rank_row["rank_by_year"].iloc[0]
+                    size = rank_row["field_size_by_year"].iloc[0]
+                else:
+                    overall_rank = rank_row["rank_overall"].iloc[0]
+                    size = rank_row["field_size"].iloc[0]
+                scope = "by birth year" if by_year else "overall"
+                st.markdown(f"**Rank {scope}:** " + rank_with_field_size(overall_rank, size))
+
+                comp_fig = merged[(merged["competition"] == name) & (merged["date"] == date)].copy()
+                if comp_fig.empty:
+                    st.caption("No figure results for this competition.")
+                    continue
+                comp_fig["fig_rank"] = comp_fig[rank_col]
+                comp_fig["fig_field_size"] = comp_fig[size_col]
+                judge_cols = [c for c in JUDGE_COLS if comp_fig[c].notna().any()]
+                st.markdown(figure_marks_table_html(comp_fig, judge_cols, overall_rank),
+                            unsafe_allow_html=True)
+                st.caption("Struck-through marks are the highest and lowest, dropped from the average. "
+                           "Average is the trimmed mean of the remaining judges. Score = average × difficulty.")
+
+with history_tab:
+    if detail.empty:
+        st.info("No figure results for this athlete.")
+    else:
+        figures = list(dict.fromkeys(detail["figure_name"]))
+        for tab, figure in zip(st.tabs(figures), figures):
+            with tab:
+                fdf = detail[detail["figure_name"] == figure]
+                judge_cols = [c for c in JUDGE_COLS if fdf[c].notna().any()]
+                x_labels = list(_x_label(fdf))
+                marks = [judge_mark_values(r, judge_cols) for _, r in fdf.iterrows()]
+                trimmed = [trimmed_flags(m) for m in marks]
+
+                fig = go.Figure()
+                for j, col in enumerate(judge_cols):
+                    color = JUDGE_COLORS[j % len(JUDGE_COLORS)]
+                    fig.add_trace(go.Bar(
+                        x=x_labels, y=[m[j] for m in marks], name=f"J{col.split('_')[1]}",
+                        marker=dict(color=["#FFFFFF" if flags[j] else color for flags, _ in trimmed],
+                                    line=dict(color=color, width=2))))
+                fig.add_trace(go.Scatter(
+                    x=x_labels, y=[avg for _, avg in trimmed], mode="markers", name="Trimmed average",
+                    marker=dict(symbol="line-ew", size=40, color="#0F172A",
+                                line=dict(width=3, color="#0F172A"))))
+                fig.update_layout(barmode="group", yaxis_range=[0, 10], yaxis_title="Mark")
+                fig.update_xaxes(type="category")
+                st.plotly_chart(plotly_layout(_legend_below(fig)), width="stretch")
+                st.caption("Hollow bars are the highest and lowest marks, dropped from the average. "
+                           "The dash on each competition is the trimmed average.")
 conn.close()

@@ -94,6 +94,16 @@ def athlete_list(conn):
            ORDER BY a.name, a.id""", conn)
 
 
+def athlete_summaries(conn):
+    """Per athlete: number of competitions, best and average total score."""
+    return pd.read_sql_query(
+        """SELECT a.id AS id, COUNT(r.id) AS competitions,
+                  MAX(r.total_score) AS best_score, AVG(r.total_score) AS avg_score
+           FROM athletes a
+           LEFT JOIN results r ON r.athlete_id = a.id
+           GROUP BY a.id""", conn)
+
+
 def athlete_history(conn, athlete_id):
     # The window count must run before the athlete filter, hence the subquery.
     return pd.read_sql_query(

@@ -4,7 +4,7 @@ from db.database import get_connection, init_schema
 from db.queries import (competition_figure_detail, competition_figures,
                         competition_judge_detail,
                         competitions_for_level, results_for)
-from ui.components import judge_marks_table
+from ui.components import judge_marks_table, render_column_filters
 from ui.theme import inject_theme
 
 inject_theme()
@@ -31,7 +31,10 @@ results = results_for(conn, cc_id)
 if results.empty:
     st.info("No results for this age group.")
 else:
-    st.dataframe(results, hide_index=True, width="stretch")
+    with st.expander("Filter results", expanded=True):
+        shown = render_column_filters(results, key=f"results_{cc_id}")
+    st.caption(f"Showing {len(shown)} of {len(results)} results")
+    st.dataframe(shown, hide_index=True, width="stretch")
 
 figures = competition_figures(conn, cc_id)
 if not figures.empty:

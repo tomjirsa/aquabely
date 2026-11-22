@@ -152,3 +152,79 @@ def judge_marks_table(df: pd.DataFrame, label: str = "judge marks") -> str:
         marks = judges_markdown([None if row[c] != row[c] else row[c] for c in jcols])
         lines.append("| " + " | ".join([*(cell(row[c]) for c in others), marks]) + " |")
     return "\n".join(lines)
+
+
+JUDGE_COLORS = ["#0E7490", "#F59E0B", "#10B981", "#6366F1", "#EF4444", "#64748B", "#8B5CF6"]
+
+
+def judge_mark_values(row: pd.Series, judge_cols: list[str]) -> list[float | None]:
+    return [None if pd.isna(row[c]) else float(row[c]) for c in judge_cols]
+
+
+def figure_marks_table_html(fig_df: pd.DataFrame, judge_cols: list[str], overall_rank) -> str:
+    """Figure table for one competition: difficulty, every judge mark (highest and lowest
+    struck through), trimmed average, score and figure rank coloured against the overall rank."""
+    judge_heads = "".join(f"<th>J{c.split('_')[1]}</th>" for c in judge_cols)
+    rows = []
+    for _, row in fig_df.iterrows():
+        marks = judge_mark_values(row, judge_cols)
+        flags, avg = trimmed_flags(marks)
+        cells = []
+        for value, dropped in zip(marks, flags):
+            if value is None:
+                cells.append("<td></td>")
+            elif dropped:
+                cells.append(f"<td><s>{value:.1f}</s></td>")
+            else:
+                cells.append(f"<td>{value:.1f}</td>")
+        rank = row["fig_rank"]
+        if pd.isna(rank):
+            rank_cell = "<td></td>"
+        else:
+            if pd.isna(overall_rank):
+                cls = "aq-tbl-eq"
+            else:
+                cls = ("aq-tbl-good" if int(rank) < int(overall_rank)
+                       else "aq-tbl-bad" if int(rank) > int(overall_rank) else "aq-tbl-eq")
+            text = rank_with_field_size(rank, row["fig_field_size"])
+            rank_cell = f'<td><span class="aq-tbl-rank {cls}">{html.escape(text)}</span></td>'
+        avg_cell = "<td></td>" if avg is None else f"<td>{avg:.2f}</td>"
+        rows.append(
+            f"<tr><td>{html.escape(str(row['figure_name']))}</td>"
+            f"<td>{row['coefficient']:.1f}</td>{''.join(cells)}{avg_cell}"
+            f"<td class=\"aq-fig-score\">{row['figure_score']:.2f}</td>{rank_cell}</tr>")
+    total_difficulty = float(fig_df["coefficient"].sum())
+    total_score = float(fig_df["figure_score"].sum())
+    blanks = "<td></td>" * len(judge_cols)
+    foot = (f"<tr><td>Total</td><td>{total_difficulty:.1f}</td>{blanks}<td></td>"
+            f"<td>{total_score:.2f}</td><td></td></tr>")
+    return ('<div class="aq-fig-wrap"><table class="aq-fig-table"><thead><tr>'
+            f"<th>Figure</th><th>Difficulty</th>{judge_heads}<th>Average</th><th>Score</th><th>Rank</th>"
+            f"</tr></thead><tbody>{''.join(rows)}</tbody><tfoot>{foot}</tfoot></table></div>")
+
+
+def render_column_filters(df: pd.DataFrame, key: str) -> pd.DataFrame:
+    """One filter per column: multiselect for text, range slider for numbers. Returns the filtered frame."""
+    filtered = df
+    widgets = st.columns(max(len(df.columns), 1))
+    for slot, column in zip(widgets, df.columns):
+        with slot:
+            values = df[column]
+            if pd.api.types.is_numeric_dtype(values):
+                if values.dropna().empty:
+                    continue
+                integer = pd.api.types.is_integer_dtype(values)
+                cast = int if integer else float
+                lo, hi = cast(values.min()), cast(values.max())
+                if lo == hi:
+                    continue
+                step = 1 if integer else 0.01
+                chosen = st.slider(column, lo, hi, (lo, hi), step=step, key=f"{key}_{column}")
+                if chosen != (lo, hi):
+                    filtered = filtered[filtered[column].between(*chosen)]
+            else:
+                options = sorted(values.dropna().astype(str).unique())
+                chosen = st.multiselect(column, options, key=f"{key}_{column}")
+                if chosen:
+                    filtered = filtered[filtered[column].astype(str).isin(chosen)]
+    return filtered
