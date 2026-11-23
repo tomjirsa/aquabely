@@ -17,16 +17,18 @@ function label(c: CompetitionEntry): string {
 
 export function CompetitionsPage() {
   const [level, setLevel] = useState<Level>("L3");
-  const [competitions, setCompetitions] = useState<CompetitionEntry[]>([]);
+  const [competitions, setCompetitions] = useState<CompetitionEntry[] | null>(null);
   const [ccId, setCcId] = useState<number | null>(null);
   const [results, setResults] = useState<ResultRow[]>([]);
   const [detail, setDetail] = useState<FigureDetailRow[]>([]);
+  const [loadedCcId, setLoadedCcId] = useState<number | null>(null);
   const [filters, setFilters] = useState<Filters>(EMPTY_FILTERS);
   const [error, setError] = useState<string | null>(null);
 
   useEffect(() => {
     let live = true;
     setCcId(null);
+    setCompetitions(null);
     setError(null);
     apiGet<CompetitionEntry[]>(`/api/competitions?level=${level}`)
       .then((c) => live && setCompetitions(c))
@@ -46,6 +48,7 @@ export function CompetitionsPage() {
         if (!live) return;
         setResults(r);
         setDetail(d);
+        setLoadedCcId(ccId);
       })
       .catch((e: Error) => live && setError(e.message));
     return () => { live = false; };
@@ -59,6 +62,7 @@ export function CompetitionsPage() {
   const onSelect = (value: string) => {
     setResults([]);
     setDetail([]);
+    setLoadedCcId(null);
     setFilters(EMPTY_FILTERS);
     setCcId(value === "" ? null : Number(value));
   };
@@ -91,7 +95,7 @@ export function CompetitionsPage() {
           onChange={(e) => onSelect(e.target.value)}
         >
           <option value="">Select a competition</option>
-          {competitions.map((c) => (
+          {(competitions ?? []).map((c) => (
             <option key={c.competition_category_id} value={c.competition_category_id}>{label(c)}</option>
           ))}
         </select>
@@ -99,7 +103,18 @@ export function CompetitionsPage() {
 
       {error && <p role="alert" className={styles.error}>{error}</p>}
 
-      {ccId !== null && (
+      {!error && competitions !== null && competitions.length === 0 && (
+        <p className={styles.empty}>No {level} competitions yet. Use the Import page to add one.</p>
+      )}
+
+      {ccId !== null && loadedCcId === ccId && results.length === 0 && (
+        <section>
+          <h2>Results</h2>
+          <p className={styles.empty}>No results for this competition.</p>
+        </section>
+      )}
+
+      {ccId !== null && loadedCcId === ccId && results.length > 0 && (
         <>
           <section>
             <h2>Results</h2>

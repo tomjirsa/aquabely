@@ -20,3 +20,5 @@
 .athlete { font-weight: 600; vertical-align: top; background: var(--aq-surface); }
 .groupStart td { border-top: 2px solid var(--aq-border); }
 .dropped { color: var(--aq-muted); }
+.empty { color: var(--aq-muted); margin-top: 1.25rem; }
+.emptyCell { color: var(--aq-muted); text-align: center; }

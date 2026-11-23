@@ -14,6 +14,9 @@ interface Props {
 
 export function ResultsTable({ rows, filteredRows, filters, onFilterChange }: Props) {
   const filtered = isFiltered(filters);
+  if (rows.length === 0) {
+    return <p className={styles.empty}>No results for this competition.</p>;
+  }
   return (
     <>
       <p className={styles.caption}>Showing {filteredRows.length} of {rows.length} results</p>
@@ -29,6 +32,11 @@ export function ResultsTable({ rows, filteredRows, filters, onFilterChange }: Pr
             </tr>
           </thead>
           <tbody>
+            {filteredRows.length === 0 && (
+              <tr>
+                <td colSpan={8} className={styles.emptyCell}>No results match these filters.</td>
+              </tr>
+            )}
             {adaptiveRanks(filteredRows).map(({ row, position }, i) => (
               <tr key={`${row.name}-${i}`}>
                 <td><RankPill position={position} official={row.rank} filtered={filtered} /></td>

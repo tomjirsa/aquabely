@@ -23,6 +23,11 @@ export function FigureDetailTable({ detail, athletes }: Props) {
   judgeCount = Math.min(judgeCount, 7);
   const cols = Array.from({ length: judgeCount }, (_, i) => i);
 
+  const hasRows = athletes.some((a) => byAthlete.has(figureKey(a.name, a.rank)));
+  if (!hasRows) {
+    return <p className={styles.empty}>No figure results for these athletes.</p>;
+  }
+
   return (
     <>
       <div className={styles.scroll}>
