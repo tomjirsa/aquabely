@@ -1,8 +1,8 @@
 import { Route, Routes } from "react-router-dom";
 import { Shell } from "./components/Shell";
-import { HomePage } from "./pages/HomePage";
+import { HomePage } from "./pages/Home/HomePage";
 import { CompetitionsPage } from "./pages/Competitions/CompetitionsPage";
-import { FiguresPage } from "./pages/FiguresPage";
+import { FiguresPage } from "./pages/Figures/FiguresPage";
 import { AthletesPage } from "./pages/AthletesPage";
 import { AthleteDetailPage } from "./pages/AthleteDetailPage";
 import { ClubsPage } from "./pages/ClubsPage";
