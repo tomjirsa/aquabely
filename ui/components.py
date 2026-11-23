@@ -3,6 +3,10 @@ import html
 import pandas as pd
 import streamlit as st
 
+from api.services.scoring import rank_label, trimmed_flags  # noqa: F401
+
+rank_with_field_size = rank_label
+
 
 def stat_card(label: str, value: str) -> None:
     st.markdown(
@@ -48,15 +52,6 @@ def style_rank_row(row: pd.Series, fig_cols: list[str]) -> list[str]:
         else:
             styles.append("background-color: #F3F4F6; color: #4B5563")
     return styles
-
-
-def rank_with_field_size(rank, size) -> str:
-    """'rank / size' text; just the rank when the size is unknown."""
-    if pd.isna(rank):
-        return ""
-    if size is None or pd.isna(size):
-        return str(int(rank))
-    return f"{int(rank)} / {int(size)}"
 
 
 def ranking_display(wide: pd.DataFrame, fig_cols: list[str]):
@@ -110,20 +105,6 @@ def figure_rank_tab_html(comp_df: pd.DataFrame, by_year: bool) -> str:
 
 
 JUDGE_COLS = [f"judge_{i}" for i in range(1, 8)]
-
-
-def trimmed_flags(scores: list[float | None]) -> tuple[list[bool], float | None]:
-    """Flag the single lowest and single highest mark as struck; return the trimmed mean."""
-    present = [i for i, s in enumerate(scores) if s is not None and s == s]
-    flags = [False] * len(scores)
-    if len(present) < 3:
-        return flags, None
-    lo = min(present, key=lambda i: (scores[i], i))
-    hi = max((i for i in present if i != lo), key=lambda i: (scores[i], -i))
-    # With ties the first max must differ from lo; otherwise pick the first max among the rest.
-    flags[lo] = flags[hi] = True
-    kept = [scores[i] for i in present if not flags[i]]
-    return flags, sum(kept) / len(kept)
 
 
 def judges_markdown(scores: list[float | None]) -> str:
