@@ -19,3 +19,9 @@ test("figureKey combines name and rank", () => {
   expect(figureKey("Anna", 1)).toBe("Anna|1");
   expect(figureKey("Anna", null)).toBe("Anna|");
 });
+
+test("fmtNum with one decimal renders judge marks like 7.0", () => {
+  expect(fmtNum(7, 1)).toBe("7.0");
+  expect(fmtNum(7.25, 1)).toBe("7.3");
+  expect(fmtNum(null, 1)).toBe("");
+});
