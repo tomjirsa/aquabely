@@ -167,7 +167,7 @@ Each phase ends with a working app and a passing test suite.
 
 ## Deployment
 
-- **Dockerfile:** two stages. Stage 1 (`node:20-alpine`) builds `web/dist`. Stage 2 (`python:3.12-slim`) installs `requirements.txt`, copies the API, the Python packages and `web/dist`, and runs `uvicorn api.main:app --host 0.0.0.0 --port 8000`.
+- **Dockerfile:** two stages. Stage 1 (`node:24-alpine`) builds `web/dist`. Stage 2 (`python:3.12-slim`) installs `requirements.txt`, copies the API, the Python packages and `web/dist`, and runs `uvicorn api.main:app --host 0.0.0.0 --port 8000`.
 - **docker-compose.yml:** the `app` service keeps its volumes (`/data` for the database, `/inbox` for uploads) and environment (`AQUABELY_DB`, `AQUABELY_INBOX`). Only the internal port changes.
 - **Caddyfile:** `reverse_proxy app:8000`. Basic auth and HTTPS are unchanged.
 - **Requirements:** add `fastapi`, `uvicorn[standard]`, `python-multipart` (for uploads). Remove `streamlit` and `plotly` at cutover. `pdfplumber`, `pandas` and `pytest` stay.

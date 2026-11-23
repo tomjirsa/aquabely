@@ -17,7 +17,7 @@ Internet → Router (port forward) → NAS
 
 | File | Purpose |
 |------|---------|
-| `Dockerfile` | Two-stage build: Node 20 builds the React app (`web/dist`), then a Python 3.12 image runs FastAPI with uvicorn on port 8000 and serves the built app |
+| `Dockerfile` | Two-stage build: Node 24 builds the React app (`web/dist`), then a Python 3.12 image runs FastAPI with uvicorn on port 8000 and serves the built app |
 | `docker-compose.yml` | Runs the app + Caddy together |
 | `Caddyfile` | Reverse proxy: HTTPS, basic auth on the whole site |
 | `.env.example` | Template for required environment variables |
