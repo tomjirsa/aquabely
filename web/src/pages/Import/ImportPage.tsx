@@ -92,8 +92,15 @@ export function ImportPage() {
       </label>
       {items.map((item) => {
         const p = item.preview;
+        // When the user picked a format by hand, detection failures no longer block;
+        // every other preview error still does.
+        const blocking = p
+          ? item.formatId !== "" && p.format_id === null
+            ? p.errors.filter((e) => !e.startsWith("Could not detect the format"))
+            : p.errors
+          : [];
         const canImport =
-          !!p && p.errors.length === 0 && item.formatId !== "" && !item.busy && !item.outcome?.ok;
+          !!p && blocking.length === 0 && item.formatId !== "" && !item.busy && !item.outcome?.ok;
         return (
           <section key={item.key} className={styles.card}>
             <h2>{item.name}</h2>

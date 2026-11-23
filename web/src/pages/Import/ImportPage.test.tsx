@@ -32,13 +32,30 @@ test("errors disable Import", async () => {
 });
 
 test("undetected format shows dropdown and Import is disabled until chosen", async () => {
-  await upload({ format_id: null, level: null, competition: null, athlete_count: 0 });
+  await upload({
+    format_id: null, level: null, competition: null, athlete_count: 0,
+    errors: ["Could not detect the format: test"],
+  });
   const select = screen.getByRole("combobox", { name: /format/i });
   const btn = screen.getByRole("button", { name: "Import" });
   expect(btn).toBeDisabled();
   fireEvent.change(select, { target: { value: "fmt2" } });
   expect(btn).toBeEnabled();
+  expect(screen.getByText("Could not detect the format: test")).toBeInTheDocument();
   expect(document.body.textContent).not.toMatch(/undefined|NaN|null/);
+});
+
+test("a real validation error still disables Import after choosing a format", async () => {
+  await upload({ format_id: null, errors: ["Could not detect the format: test", "bad row"] });
+  fireEvent.change(screen.getByRole("combobox", { name: /format/i }), { target: { value: "fmt2" } });
+  expect(screen.getByRole("button", { name: "Import" })).toBeDisabled();
+});
+
+test("400 shows the detail text", async () => {
+  await upload();
+  mockPost.mockRejectedValue(new ApiError(400, "Parsing failed: boom"));
+  fireEvent.click(screen.getByRole("button", { name: "Import" }));
+  expect(await screen.findByText("Parsing failed: boom")).toBeInTheDocument();
 });
 
 test("shows level, count and collapsible warnings", async () => {
