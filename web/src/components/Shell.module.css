@@ -1,0 +1,12 @@
+.shell { display: flex; min-height: 100vh; }
+.nav {
+  width: 220px; padding: 16px; box-sizing: border-box;
+  background: var(--aq-surface); border-right: 1px solid var(--aq-border);
+  display: flex; flex-direction: column; gap: 4px;
+}
+.brand { font-weight: 700; color: var(--aq-primary); margin-bottom: 12px; }
+.link { padding: 8px 12px; border-radius: 8px; color: var(--aq-muted); text-decoration: none; }
+.link:hover { color: var(--aq-text); }
+.active { background: var(--aq-primary); color: #fff; }
+.active:hover { color: #fff; }
+.main { flex: 1; padding: 24px; }
