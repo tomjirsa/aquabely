@@ -1,0 +1,22 @@
+.page { padding: 1.5rem; max-width: 1280px; margin: 0 auto; }
+.header { display: flex; align-items: center; justify-content: space-between; gap: 1rem; }
+.header h1 { margin: 0; font-size: 1.5rem; }
+.levelSwitch { display: inline-flex; border: 1px solid var(--aq-border); border-radius: 8px; overflow: hidden; }
+.levelBtn, .levelActive { border: 0; padding: 0.375rem 1rem; font: inherit; cursor: pointer; background: var(--aq-bg); color: var(--aq-text); }
+.levelActive { background: var(--aq-primary); color: var(--aq-bg); }
+.selection { display: flex; flex-direction: column; gap: 0.375rem; margin: 1.25rem 0; max-width: 28rem; }
+.selection label { font-size: 0.8125rem; color: var(--aq-muted); }
+.select { padding: 0.5rem; border: 1px solid var(--aq-border); border-radius: 6px; background: var(--aq-bg); color: var(--aq-text); font: inherit; }
+.error { color: var(--aq-text); background: var(--aq-bad-bg); padding: 0.5rem 0.75rem; border-radius: 6px; }
+.caption { color: var(--aq-muted); font-size: 0.8125rem; margin: 0 0 0.5rem; }
+.footnote { color: var(--aq-muted); font-size: 0.8125rem; margin-top: 0.5rem; }
+.scroll { overflow-x: auto; }
+.table { width: 100%; border-collapse: collapse; font-size: 0.875rem; }
+.table th, .table td { padding: 0.5rem 0.625rem; text-align: left; border-bottom: 1px solid var(--aq-border); }
+.table th { background: var(--aq-surface); font-weight: 600; white-space: nowrap; }
+.table .num { text-align: right; font-variant-numeric: tabular-nums; }
+.filterRow td { padding: 0.375rem 0.625rem; background: var(--aq-surface); border-bottom: 0; }
+.filterInput { width: 100%; min-width: 4rem; box-sizing: border-box; padding: 0.25rem 0.5rem; border: 1px solid var(--aq-border); border-radius: 4px; background: var(--aq-bg); color: var(--aq-text); font: inherit; font-size: 0.8125rem; }
+.athlete { font-weight: 600; vertical-align: top; background: var(--aq-surface); }
+.groupStart td { border-top: 2px solid var(--aq-border); }
+.dropped { color: var(--aq-muted); }
