@@ -1,3 +1,4 @@
+import { fmtText } from "../../lib/format";
 import styles from "./RankPill.module.css";
 
 interface Props {
@@ -29,7 +30,7 @@ export function RankPill({ position, official, filtered }: Props) {
         {position}
       </span>
       <span data-testid="rank-official" className={`${styles.half} ${styles.right}`}>
-        {official ?? "-"}
+        {fmtText(official)}
       </span>
     </span>
   );

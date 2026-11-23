@@ -1,4 +1,5 @@
 import type { FigureDetailRow, ResultRow } from "../../api/types";
+import { figureKey, fmtNum, fmtText } from "../../lib/format";
 import styles from "./CompetitionsPage.module.css";
 
 interface Props {
@@ -6,14 +7,12 @@ interface Props {
   athletes: ResultRow[];
 }
 
-const fmt = (v: number | null | undefined) => (v === null || v === undefined ? "-" : String(v));
-
 export function FigureDetailTable({ detail, athletes }: Props) {
   const byAthlete = new Map<string, FigureDetailRow[]>();
   for (const d of detail) {
-    const list = byAthlete.get(d.athlete);
+    const list = byAthlete.get(figureKey(d.athlete, d.rank));
     if (list) list.push(d);
-    else byAthlete.set(d.athlete, [d]);
+    else byAthlete.set(figureKey(d.athlete, d.rank), [d]);
   }
   let judgeCount = 0;
   for (const d of detail) {
@@ -38,18 +37,18 @@ export function FigureDetailTable({ detail, athletes }: Props) {
           </thead>
           <tbody>
             {athletes.map((a, ai) => {
-              const rows = byAthlete.get(a.name) ?? [];
+              const rows = byAthlete.get(figureKey(a.name, a.rank)) ?? [];
               return rows.map((r, ri) => (
                 <tr key={`${a.name}-${ai}-${ri}`} className={ri === 0 ? styles.groupStart : undefined}>
                   {ri === 0 && <td rowSpan={rows.length} className={styles.athlete}>{a.name}</td>}
-                  <td>{r.figure_name ?? "-"}</td>
+                  <td>{fmtText(r.figure_name)}</td>
                   {cols.map((i) => (
                     <td key={i} className={styles.num}>
-                      {r.dropped[i] ? <s className={styles.dropped}>{fmt(r.judges[i])}</s> : fmt(r.judges[i])}
+                      {r.dropped[i] ? <s className={styles.dropped}>{fmtNum(r.judges[i])}</s> : fmtNum(r.judges[i])}
                     </td>
                   ))}
-                  <td className={styles.num}>{fmt(r.average)}</td>
-                  <td className={styles.num}>{fmt(r.figure_score)}</td>
+                  <td className={styles.num}>{fmtNum(r.average)}</td>
+                  <td className={styles.num}>{fmtNum(r.figure_score)}</td>
                 </tr>
               ));
             })}

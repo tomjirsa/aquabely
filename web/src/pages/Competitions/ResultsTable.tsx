@@ -1,5 +1,6 @@
 import type { ResultRow } from "../../api/types";
 import { adaptiveRanks, isFiltered, type FilterKey, type Filters } from "../../lib/filters";
+import { fmtNum, fmtText } from "../../lib/format";
 import { FilterRow } from "./FilterRow";
 import { RankPill } from "./RankPill";
 import styles from "./CompetitionsPage.module.css";
@@ -10,8 +11,6 @@ interface Props {
   filters: Filters;
   onFilterChange: (key: FilterKey, value: string) => void;
 }
-
-const fmt = (v: number | null) => (v === null || v === undefined ? "-" : String(v));
 
 export function ResultsTable({ rows, filteredRows, filters, onFilterChange }: Props) {
   const filtered = isFiltered(filters);
@@ -34,12 +33,12 @@ export function ResultsTable({ rows, filteredRows, filters, onFilterChange }: Pr
               <tr key={`${row.name}-${i}`}>
                 <td><RankPill position={position} official={row.rank} filtered={filtered} /></td>
                 <td>{row.name}</td>
-                <td>{fmt(row.year_of_birth)}</td>
-                <td>{row.club ?? "-"}</td>
-                <td>{row.country ?? "-"}</td>
-                <td className={styles.num}>{fmt(row.total_score)}</td>
-                <td className={styles.num}>{fmt(row.penalty)}</td>
-                <td className={styles.num}>{fmt(row.points_behind)}</td>
+                <td>{fmtText(row.year_of_birth)}</td>
+                <td>{fmtText(row.club)}</td>
+                <td>{fmtText(row.country)}</td>
+                <td className={styles.num}>{fmtNum(row.total_score)}</td>
+                <td className={styles.num}>{fmtNum(row.penalty)}</td>
+                <td className={styles.num}>{fmtNum(row.points_behind)}</td>
               </tr>
             ))}
           </tbody>

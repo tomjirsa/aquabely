@@ -12,3 +12,8 @@ test("unfiltered pill shows only the single pill", () => {
   expect(screen.getByTestId("rank-position").textContent).toBe("2");
   expect(screen.queryByTestId("rank-official")).toBeNull();
 });
+
+test("null official rank renders an empty half", () => {
+  render(<RankPill position={1} official={null} filtered />);
+  expect(screen.getByTestId("rank-official").textContent).toBe("");
+});
