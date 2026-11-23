@@ -43,3 +43,74 @@ class HomeSummary(BaseModel):
     athlete_count: int
     top_scorer_name: str | None = None
     top_scorer_total: float | None = None
+
+
+class AthleteSummary(BaseModel):
+    id: int
+    name: str
+    club: str | None = None
+    year_of_birth: int | None = None
+    competitions: int
+    best_score: float | None = None
+    avg_score: float | None = None
+
+
+class AthleteHistoryRow(BaseModel):
+    level: str | None = None
+    competition: str
+    date: str | None = None
+    age_group: str | None = None
+    rank: int | None = None
+    total_score: float | None = None
+    field_size: int | None = None
+
+
+class OverallRank(BaseModel):
+    competition: str
+    date: str | None = None
+    rank_overall: int | None = None
+    rank_by_year: int | None = None
+    field_size: int | None = None
+    field_size_by_year: int | None = None
+
+
+class AthleteProfile(AthleteSummary):
+    history: list[AthleteHistoryRow]
+    overall_ranks: list[OverallRank]
+
+
+class AthleteFigure(BaseModel):
+    figure_name: str | None = None
+    coefficient: float | None = None
+    fig_rank_overall: int | None = None
+    fig_rank_by_year: int | None = None
+    fig_field_size: int | None = None
+    fig_field_size_by_year: int | None = None
+    judges: list[float | None]
+    dropped: list[bool]
+    average: float | None = None
+    figure_score: float | None = None
+
+
+class AthleteCompetition(BaseModel):
+    date: str | None = None
+    competition: str
+    rank_overall: int | None = None
+    rank_by_year: int | None = None
+    field_size: int | None = None
+    field_size_by_year: int | None = None
+    figures: list[AthleteFigure]
+
+
+class FigurePoint(BaseModel):
+    date: str | None = None
+    competition: str
+    judges: list[float | None]
+    dropped: list[bool]
+    average: float | None = None
+    figure_score: float | None = None
+
+
+class FigureHistory(BaseModel):
+    figure_name: str | None = None
+    points: list[FigurePoint]

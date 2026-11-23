@@ -3,13 +3,14 @@ from pathlib import Path
 from fastapi import FastAPI, HTTPException
 from fastapi.responses import FileResponse
 
-from api.routers import competitions, home
+from api.routers import athletes, competitions, home
 
 DIST_DIR = Path(__file__).resolve().parent.parent / "web" / "dist"
 
 app = FastAPI(title="Aquabely API")
 app.include_router(home.router)
 app.include_router(competitions.router)
+app.include_router(athletes.router)
 
 
 @app.get("/api/health")
