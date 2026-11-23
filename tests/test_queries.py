@@ -369,3 +369,8 @@ def test_athlete_summaries_counts_results_and_scores(conn):
     assert (df["competitions"] >= 0).all()
     assert set(df.columns) >= {"competitions", "best_score", "avg_score"}
 
+
+def test_results_for_includes_birth_year(conn):
+    cc = conn.execute("SELECT id FROM competition_categories WHERE id IS NOT NULL LIMIT 1").fetchone()[0]
+    df = results_for(conn, int(cc))
+    assert "year_of_birth" in df.columns

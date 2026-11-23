@@ -1,11 +1,14 @@
 import streamlit as st
 
 from db.database import get_connection, init_schema
-from db.queries import (competition_figure_detail, competition_figures,
-                        competition_judge_detail,
-                        competitions_for_level, results_for)
-from ui.components import judge_marks_table, render_column_filters
+from db.queries import competition_figure_detail, competitions_for_level, results_for
+from ui.components import (JUDGE_COLS, figure_detail_html, filter_results, results_table_html)
 from ui.theme import inject_theme
+
+FILTER_FIELDS = ["name", "born", "club", "country", "score", "penalty", "behind"]
+FILTER_PLACEHOLDERS = {"name": "Filter", "born": "Year", "club": "Filter", "country": "Filter",
+                       "score": "Min - max", "penalty": "Min - max", "behind": "Min - max"}
+COLUMN_WIDTHS = [1, 3, 1.2, 3, 1.6, 1.4, 1.4, 1.4]  # rank, then one slot per filter
 
 inject_theme()
 st.title("Competitions")
@@ -22,32 +25,41 @@ if comps.empty:
     st.stop()
 
 names = list(dict.fromkeys(comps["competition"]))
-competition = st.selectbox("Competition", names)
-groups = comps[comps["competition"] == competition]
-label = st.selectbox("Age group", list(groups["age_group_label"]))
-cc_id = int(groups[groups["age_group_label"] == label].iloc[0]["competition_category_id"])
+competition = st.selectbox("Competition", names, index=None, placeholder="Select a competition")
+if competition is None:
+    conn.close()
+    st.stop()
 
+cc_id = int(comps[comps["competition"] == competition].iloc[0]["competition_category_id"])
 results = results_for(conn, cc_id)
 if results.empty:
-    st.info("No results for this age group.")
+    st.info("No results for this competition.")
+    conn.close()
+    st.stop()
+
+st.subheader("Results")
+slots = st.columns(COLUMN_WIDTHS)
+filters = {}
+for slot, field in zip(slots[1:], FILTER_FIELDS):
+    with slot:
+        filters[field] = st.text_input(f"Filter {field}", key=f"flt_{cc_id}_{field}",
+                                       placeholder=FILTER_PLACEHOLDERS[field],
+                                       label_visibility="collapsed")
+active = any(value.strip() for value in filters.values())
+shown = filter_results(results, filters)
+st.caption(f"Showing {len(shown)} of {len(results)} results")
+if shown.empty:
+    st.info("No results match these filters.")
 else:
-    with st.expander("Filter results", expanded=True):
-        shown = render_column_filters(results, key=f"results_{cc_id}")
-    st.caption(f"Showing {len(shown)} of {len(results)} results")
-    st.dataframe(shown, hide_index=True, width="stretch")
+    st.markdown(results_table_html(shown, active), unsafe_allow_html=True)
 
-figures = competition_figures(conn, cc_id)
-if not figures.empty:
-    st.subheader("Figures")
-    if figures["difficulty"].isna().all():
-        figures = figures.drop(columns=["difficulty"])
-    st.dataframe(figures, hide_index=True)
-
-    with st.expander("Judge detail"):
-        detail = competition_judge_detail(conn, cc_id)
-        st.markdown(judge_marks_table(detail))
-
-    with st.expander("Figure detail"):
-        fdetail = competition_figure_detail(conn, cc_id)
-        st.markdown(judge_marks_table(fdetail))
+st.subheader("Figure detail")
+detail = competition_figure_detail(conn, cc_id)
+groups = [(name, detail[detail["athlete"] == name]) for name in dict.fromkeys(shown["name"])]
+groups = [(name, figs) for name, figs in groups if not figs.empty]
+if not groups:
+    st.caption("No figure results for these athletes.")
+else:
+    judge_cols = [c for c in JUDGE_COLS if detail[c].notna().any()]
+    st.markdown(figure_detail_html(groups, judge_cols), unsafe_allow_html=True)
 conn.close()

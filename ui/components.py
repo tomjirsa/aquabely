@@ -203,28 +203,100 @@ def figure_marks_table_html(fig_df: pd.DataFrame, judge_cols: list[str], overall
             f"</tr></thead><tbody>{''.join(rows)}</tbody><tfoot>{foot}</tfoot></table></div>")
 
 
-def render_column_filters(df: pd.DataFrame, key: str) -> pd.DataFrame:
-    """One filter per column: multiselect for text, range slider for numbers. Returns the filtered frame."""
-    filtered = df
-    widgets = st.columns(max(len(df.columns), 1))
-    for slot, column in zip(widgets, df.columns):
-        with slot:
-            values = df[column]
-            if pd.api.types.is_numeric_dtype(values):
-                if values.dropna().empty:
-                    continue
-                integer = pd.api.types.is_integer_dtype(values)
-                cast = int if integer else float
-                lo, hi = cast(values.min()), cast(values.max())
-                if lo == hi:
-                    continue
-                step = 1 if integer else 0.01
-                chosen = st.slider(column, lo, hi, (lo, hi), step=step, key=f"{key}_{column}")
-                if chosen != (lo, hi):
-                    filtered = filtered[filtered[column].between(*chosen)]
-            else:
-                options = sorted(values.dropna().astype(str).unique())
-                chosen = st.multiselect(column, options, key=f"{key}_{column}")
-                if chosen:
-                    filtered = filtered[filtered[column].astype(str).isin(chosen)]
-    return filtered
+TEXT_FILTERS = {"name": "name", "born": "year_of_birth", "club": "club", "country": "country"}
+RANGE_FILTERS = {"score": "total_score", "penalty": "penalty", "behind": "points_behind"}
+_PLACE_RANK_CLASS = {1: "aq-tbl-good", 2: "aq-tbl-eq", 3: "aq-tbl-bad"}
+
+
+def parse_range(text: str | None) -> tuple[float, float] | None:
+    """'10-20' -> (10, 20); '10-' -> (10, inf); '-5' -> (-inf, 5); '10' -> (10, 10); blank or junk -> None."""
+    text = (text or "").strip()
+    if not text:
+        return None
+    if "-" in text:
+        low_text, high_text = (part.strip() for part in text.split("-", 1))
+    else:
+        low_text = high_text = text
+    try:
+        low = float(low_text) if low_text else float("-inf")
+        high = float(high_text) if high_text else float("inf")
+    except ValueError:
+        return None
+    return low, high
+
+
+def filter_results(df: pd.DataFrame, filters: dict[str, str]) -> pd.DataFrame:
+    """Keep the rows matching every filter: substring for text columns, min-max for numbers."""
+    out = df
+    for key, column in TEXT_FILTERS.items():
+        query = (filters.get(key) or "").strip().lower()
+        if query:
+            out = out[out[column].astype(str).str.lower().str.contains(query, regex=False)]
+    for key, column in RANGE_FILTERS.items():
+        bounds = parse_range(filters.get(key))
+        if bounds:
+            out = out[out[column].between(*bounds)]
+    return out
+
+
+def _num(value, fmt: str = "{:.2f}") -> str:
+    return "" if pd.isna(value) else fmt.format(value)
+
+
+def results_table_html(df: pd.DataFrame, active: bool) -> str:
+    """Results rows. The rank is renumbered 1..n over the rows shown; while a filter is active the
+    official rank sits in a grey half of the same pill."""
+    body = []
+    for position, (_, row) in enumerate(df.iterrows(), start=1):
+        colour = _PLACE_RANK_CLASS.get(position, "")
+        split = " aq-rank-split" if active else ""
+        pill = f'<span class="aq-rank-pos {colour}{split}">{position}</span>'
+        if active:
+            pill += f'<span class="aq-rank-orig">{_num(row["rank"], "{:.0f}")}</span>'
+        body.append(
+            "<tr>"
+            f'<td><span class="aq-rank">{pill}</span></td>'
+            f'<td class="aq-left aq-athlete">{html.escape(str(row["name"]))}</td>'
+            f'<td class="aq-left">{_num(row["year_of_birth"], "{:.0f}")}</td>'
+            f'<td class="aq-left">{html.escape(str(row["club"]))}</td>'
+            f'<td class="aq-left">{html.escape(str(row["country"] or ""))}</td>'
+            f'<td>{_num(row["total_score"])}</td>'
+            f'<td>{_num(row["penalty"])}</td>'
+            f'<td>{_num(row["points_behind"])}</td>'
+            "</tr>")
+    head = ('<tr><th class="aq-left">Rank</th><th class="aq-left">Name</th><th class="aq-left">Born</th>'
+            '<th class="aq-left">Club</th><th class="aq-left">Country</th><th>Total score</th>'
+            '<th>Penalty</th><th>Points behind</th></tr>')
+    return ('<div class="aq-fig-wrap"><table class="aq-fig-table aq-results">'
+            f'<thead>{head}</thead><tbody>{"".join(body)}</tbody></table></div>')
+
+
+def figure_detail_html(groups: list[tuple[str, pd.DataFrame]], judge_cols: list[str]) -> str:
+    """One block per athlete: the name spans its figure rows; each figure row shows the judge marks
+    (highest and lowest struck through), the trimmed average and the figure result."""
+    judge_heads = "".join(f"<th>J{c.split('_')[1]}</th>" for c in judge_cols)
+    body = []
+    for name, figs in groups:
+        span = len(figs)
+        for k, (_, fg) in enumerate(figs.iterrows()):
+            marks = judge_mark_values(fg, judge_cols)
+            flags, avg = trimmed_flags(marks)
+            cells = []
+            for value, dropped in zip(marks, flags):
+                if value is None:
+                    cells.append("<td></td>")
+                elif dropped:
+                    cells.append(f"<td><s>{value:.1f}</s></td>")
+                else:
+                    cells.append(f"<td>{value:.1f}</td>")
+            name_cell = (f'<td class="aq-left aq-athlete" rowspan="{span}">{html.escape(name)}</td>'
+                         if k == 0 else "")
+            average = "" if avg is None else f"{avg:.2f}"
+            result = _num(fg["figure_score"])
+            body.append(
+                f"<tr>{name_cell}<td class=\"aq-left\">{html.escape(str(fg['figure_name']))}</td>"
+                f"{''.join(cells)}<td>{average}</td><td class=\"aq-fig-score\">{result}</td></tr>")
+    head = (f'<tr><th class="aq-left">Athlete</th><th class="aq-left">Figure</th>{judge_heads}'
+            '<th>Average</th><th>Result</th></tr>')
+    return ('<div class="aq-fig-wrap"><table class="aq-fig-table aq-figure-detail">'
+            f'<thead>{head}</thead><tbody>{"".join(body)}</tbody></table></div>')

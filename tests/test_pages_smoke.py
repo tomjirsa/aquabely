@@ -59,9 +59,29 @@ def test_figures_page_registered_between_competitions_and_athletes():
     assert 'st.Page("views/5_figures.py", title="Figures"' in text
 
 
-def test_competitions_page_figure_detail_renders_with_seeded_data(seeded_app_db):
+def test_competitions_page_hides_results_until_a_competition_is_selected(seeded_app_db):
     at = AppTest.from_file(str(ROOT / "views/2_competitions.py"), default_timeout=30).run()
+    at.radio[0].set_value("U12").run()
     assert not at.exception
+    assert at.selectbox[0].value is None
+    assert not any("<table class=" in m.value for m in at.markdown)
+
+
+def test_competitions_page_shows_results_and_figure_detail_once_selected(seeded_app_db):
+    from db.database import get_connection
+    from db.queries import competitions_for_level, results_for
+    conn = get_connection()
+    comps = competitions_for_level(conn, "U12")
+    cc_id = int(comps.iloc[0]["competition_category_id"])
+    athlete = results_for(conn, cc_id).iloc[0]["name"]
+    conn.close()
+    at = AppTest.from_file(str(ROOT / "views/2_competitions.py"), default_timeout=30).run()
+    at.radio[0].set_value("U12").run()
+    at.selectbox[0].set_value(comps.iloc[0]["competition"]).run()
+    assert not at.exception
+    tables = [m.value for m in at.markdown if "<table class=" in m.value]
+    assert any("aq-results" in t and athlete in t for t in tables)
+    assert any("aq-figure-detail" in t and athlete in t for t in tables)
 
 
 def test_athletes_page_has_one_tab_per_competition(seeded_app_db):

@@ -62,8 +62,8 @@ def competitions_for_level(conn, level_code):
 
 def results_for(conn, competition_category_id):
     return pd.read_sql_query(
-        """SELECT r.rank AS rank, a.name AS name, cl.name AS club,
-                  a.country AS country, r.total_score AS total_score,
+        """SELECT r.rank AS rank, a.name AS name, a.year_of_birth AS year_of_birth,
+                  cl.name AS club, a.country AS country, r.total_score AS total_score,
                   r.penalty AS penalty, r.points_behind AS points_behind
            FROM results r
            JOIN athletes a ON a.id = r.athlete_id

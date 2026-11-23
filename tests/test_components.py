@@ -72,22 +72,56 @@ def test_figure_marks_table_strikes_highest_and_lowest_and_averages_the_rest():
     assert "aq-fig-score" in out and "14.00" in out
 
 
+def test_parse_range_forms():
+    from ui.components import parse_range
+    assert parse_range("") is None and parse_range("abc") is None
+    assert parse_range("10") == (10.0, 10.0)
+    assert parse_range("10-20") == (10.0, 20.0)
+    assert parse_range("10-") == (10.0, float("inf"))
+    assert parse_range("-5") == (float("-inf"), 5.0)
 
 
-def test_render_column_filters_filters_text_and_numeric_columns():
-    from streamlit.testing.v1 import AppTest
+def test_filter_results_text_and_range():
+    import pandas as pd
+    from ui.components import filter_results
+    df = pd.DataFrame({
+        "name": ["Ann", "Bea", "Cy"], "year_of_birth": [2015, 2016, 2016],
+        "club": ["Delfin", "Kometa", "Delfin"], "country": ["CZE", "SVK", "CZE"],
+        "total_score": [40.0, 35.0, 30.0], "penalty": [0.0, 1.0, 0.0], "points_behind": [0.0, 5.0, 10.0]})
+    assert list(filter_results(df, {"club": "delf"})["name"]) == ["Ann", "Cy"]
+    assert list(filter_results(df, {"born": "2016"})["name"]) == ["Bea", "Cy"]
+    assert list(filter_results(df, {"score": "32-40"})["name"]) == ["Ann", "Bea"]
+    assert list(filter_results(df, {"penalty": "1-"})["name"]) == ["Bea"]
+    assert len(filter_results(df, {"name": "", "score": "junk"})) == 3
 
-    def app():
-        import pandas as pd
-        import streamlit as st
-        from ui.components import render_column_filters
-        df = pd.DataFrame({"club": ["A", "B", "A"], "rank": [1, 2, 3], "total_score": [10.0, 20.0, 30.0]})
-        out = render_column_filters(df, key="t")
-        st.text(f"rows={len(out)}")
 
-    at = AppTest.from_function(app, default_timeout=20).run()
-    assert not at.exception
-    assert at.text[0].value == "rows=3"
+def test_results_table_renumbers_and_shows_official_rank_when_filtered():
+    import pandas as pd
+    from ui.components import results_table_html
+    df = pd.DataFrame({
+        "rank": [1, 3, 4], "name": ["A", "C", "D"], "year_of_birth": [2015, 2017, 2015],
+        "club": ["X", "Y", "Y"], "country": ["CZE", "CZE", "POL"],
+        "total_score": [40.0, 30.0, 25.0], "penalty": [0.0, 0.0, 1.0], "points_behind": [0.0, 10.0, 15.0]})
+    filtered = results_table_html(df.iloc[[1, 2]], active=True)
+    assert '<span class="aq-rank-pos aq-tbl-good aq-rank-split">1</span>' in filtered
+    assert '<span class="aq-rank-orig">3</span>' in filtered
+    assert '<span class="aq-rank-orig">4</span>' in filtered
+    plain = results_table_html(df, active=False)
+    assert "aq-rank-orig" not in plain
+    assert "aq-rank-split" not in plain
 
-    at.multiselect[0].set_value(["A"]).run()
-    assert at.text[0].value == "rows=2"
+
+def test_figure_detail_strikes_extremes_and_rowspans_athlete():
+    import pandas as pd
+    from ui.components import figure_detail_html
+    figs = pd.DataFrame([
+        {"figure_name": "Ballet", "judge_1": 7.0, "judge_2": 8.0, "judge_3": 6.0,
+         "judge_4": 7.5, "judge_5": None, "figure_score": 14.0},
+        {"figure_name": "Kipnus", "judge_1": 5.0, "judge_2": 5.0, "judge_3": 5.0,
+         "judge_4": 5.0, "judge_5": None, "figure_score": 10.0},
+    ])
+    out = figure_detail_html([("Ann", figs)], ["judge_1", "judge_2", "judge_3", "judge_4"])
+    assert 'rowspan="2"' in out
+    assert "<s>6.0</s>" in out and "<s>8.0</s>" in out
+    assert "7.25" in out and "14.00" in out
+    assert out.count("<tr>") == 3  # header + two figure rows

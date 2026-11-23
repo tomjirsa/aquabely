@@ -72,6 +72,12 @@ body {
 .aq-fig-table s { color: var(--aq-muted); }
 .aq-fig-table tfoot td { font-weight: 600; background: var(--aq-surface); }
 .aq-fig-table .aq-fig-score { color: var(--aq-primary); font-weight: 600; }
+.aq-fig-table .aq-left { text-align: left; }
+.aq-fig-table .aq-athlete { font-weight: 500; vertical-align: top; }
+.aq-rank { display: inline-flex; align-items: stretch; }
+.aq-rank-pos { display: inline-block; min-width: 2rem; text-align: center; padding: 2px 8px; border-radius: 6px; font-weight: 500; }
+.aq-rank-pos.aq-rank-split { border-radius: 6px 0 0 6px; }
+.aq-rank-orig { display: inline-block; min-width: 2rem; text-align: center; padding: 2px 8px; border-radius: 0 6px 6px 0; background: var(--aq-surface); color: var(--aq-muted); font-weight: 500; }
 </style>
 """
 
