@@ -152,3 +152,26 @@ class ClubDetail(BaseModel):
     roster: list[RosterEntry]
     medals: list[MedalCount]
     avg_scores: list[ClubAvgScore]
+
+
+class ImportPreview(BaseModel):
+    sha256: str
+    filename: str
+    format_id: str | None = None
+    available_formats: list[str]
+    level: str | None = None
+    competition: str | None = None
+    athlete_count: int = 0
+    errors: list[str] = []
+    warnings: list[str] = []
+
+
+class ImportRequest(BaseModel):
+    sha256: str
+    filename: str
+    format_id: str
+
+
+class ImportResult(BaseModel):
+    athlete_count: int
+    level: str | None = None
