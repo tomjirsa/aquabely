@@ -114,3 +114,41 @@ class FigurePoint(BaseModel):
 class FigureHistory(BaseModel):
     figure_name: str | None = None
     points: list[FigurePoint]
+
+
+class CatalogueFigure(BaseModel):
+    code: str | None = None
+    name: str | None = None
+    coefficient: float | None = None
+    description_cs: str | None = None
+    performances: int
+    competitions: str | None = None
+
+
+class ClubSummary(BaseModel):
+    id: int
+    name: str
+
+
+class RosterEntry(BaseModel):
+    name: str
+    year_of_birth: int | None = None
+    country: str | None = None
+
+
+class MedalCount(BaseModel):
+    place: int
+    count: int
+
+
+class ClubAvgScore(BaseModel):
+    competition: str
+    date: str | None = None
+    avg_total: float | None = None
+
+
+class ClubDetail(BaseModel):
+    name: str
+    roster: list[RosterEntry]
+    medals: list[MedalCount]
+    avg_scores: list[ClubAvgScore]

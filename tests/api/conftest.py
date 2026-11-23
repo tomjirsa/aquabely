@@ -48,3 +48,14 @@ def athlete_without_figures_id(tmp_path, monkeypatch):
         return conn.execute("SELECT id FROM athletes WHERE name='Nofig'").fetchone()[0]
     finally:
         conn.close()
+
+
+@pytest.fixture
+def seeded_club_id(seeded_app_db):
+    from db.database import get_connection
+    conn = get_connection()
+    try:
+        return conn.execute(
+            "SELECT cl.id FROM clubs cl JOIN results r ON r.club_id = cl.id ORDER BY r.id").fetchone()[0]
+    finally:
+        conn.close()
