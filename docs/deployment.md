@@ -7,7 +7,8 @@ Internet → Router (port forward) → NAS
            80  → 8080               ├── Caddy (host 8080/8443 → container 80/445)
            443 → 8443               │     • HTTPS via Let's Encrypt
                                     │     • Whole site behind basic auth
-                                    └── App container (port 8504)
+                                    └── App container (FastAPI, port 8000)
+                                          • serves /api and the built React app
                                           • aquabely-data volume  ← SQLite DB
                                           • aquabely-inbox volume ← PDF uploads
 ```
@@ -16,7 +17,7 @@ Internet → Router (port forward) → NAS
 
 | File | Purpose |
 |------|---------|
-| `Dockerfile` | Builds the app image |
+| `Dockerfile` | Two-stage build: Node 20 builds the React app (`web/dist`), then a Python 3.12 image runs FastAPI with uvicorn on port 8000 and serves the built app |
 | `docker-compose.yml` | Runs the app + Caddy together |
 | `Caddyfile` | Reverse proxy: HTTPS, basic auth on the whole site |
 | `.env.example` | Template for required environment variables |
@@ -177,7 +178,31 @@ The app is now live at `https://rookie-raspbi.cz`.
 | URL | Expected |
 |-----|----------|
 | `https://rookie-raspbi.cz` | Browser prompts for username/password, then the home page loads |
-| `https://rookie-raspbi.cz/Import` | Same login applies (every page is protected) |
+| `https://rookie-raspbi.cz/import` | Same login applies (every page is protected) |
+| `https://rookie-raspbi.cz/api/health` | `{"status":"ok"}` |
+
+The old paths `/Import`, `/Competitions`, `/Athletes`, `/Clubs` and `/Figures` redirect (301) to their lowercase routes.
+
+---
+
+## Running locally (without Docker)
+
+The API and the React app run as two processes during development.
+
+```sh
+# Terminal 1: API on http://localhost:8000
+pip install -r requirements.txt
+uvicorn api.main:app --reload --port 8000
+
+# Terminal 2: React dev server on http://localhost:5173 (proxies /api to port 8000)
+cd web
+npm ci
+npm run dev
+```
+
+To serve the built app from FastAPI alone, run `npm run build` in `web/` and start uvicorn. It serves `web/dist` for every non-API path, the same way the container does. Set `AQUABELY_DB` and `AQUABELY_INBOX` to choose where the database and uploads live.
+
+Tests: `python -m pytest -q` for the API, `npm test` in `web/` for the frontend.
 
 ---
 

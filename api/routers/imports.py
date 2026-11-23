@@ -5,6 +5,7 @@ from pathlib import Path
 
 import pdfplumber
 from fastapi import APIRouter, HTTPException, UploadFile
+from fastapi.concurrency import run_in_threadpool
 from fastapi.responses import JSONResponse
 
 from api.schemas import ImportPreview, ImportRequest, ImportResult
@@ -13,7 +14,6 @@ from db.importer import DuplicateImportError, ValidationFailed, import_competiti
 from parser.registry import (PARSERS, AmbiguousFormatError, UnknownFormatError,
                              detect_format, get_parser)
 from parser.validate import validate
-from ui.import_helpers import upload_path, write_if_changed
 
 router = APIRouter(prefix="/api/imports")
 
@@ -30,6 +30,19 @@ def _inbox() -> Path:
 
 def _too_large() -> HTTPException:
     return HTTPException(status_code=413, detail="File exceeds 50 MB")
+
+
+def write_if_changed(dest: Path, data: bytes) -> bool:
+    """Write data to dest only if missing or different. Returns True if written."""
+    if dest.exists() and dest.read_bytes() == data:
+        return False
+    dest.write_bytes(data)
+    return True
+
+
+def upload_path(inbox: Path, data: bytes) -> Path:
+    """Inbox path for uploaded bytes: named by content hash, never by user input."""
+    return inbox / f"{hashlib.sha256(data).hexdigest()}.pdf"
 
 
 def _first_page_text(path: Path) -> str:
@@ -52,11 +65,16 @@ async def _read_capped(file: UploadFile) -> bytes:
 @router.post("/preview", response_model=ImportPreview)
 async def preview(file: UploadFile):
     data = await _read_capped(file)
+    # The PDF parse is synchronous and slow: run it off the event loop.
+    return await run_in_threadpool(_build_preview, data, file.filename)
+
+
+def _build_preview(data: bytes, filename: str | None) -> dict:
     sha = hashlib.sha256(data).hexdigest()
     dest = upload_path(_inbox(), data)
     write_if_changed(dest, data)
 
-    result = {"sha256": sha, "filename": file.filename or "upload.pdf",
+    result = {"sha256": sha, "filename": filename or "upload.pdf",
               "available_formats": [p.format_id for p in PARSERS],
               "errors": [], "warnings": []}
     try:

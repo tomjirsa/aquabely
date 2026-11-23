@@ -282,9 +282,6 @@ def test_same_figure_name_under_different_numbers_is_one_figure():
     scores = athlete_figure_scores(c, aid)
     assert sorted(scores["figure_name"].unique()) == ["Barracuda", "Straight Ballet Leg"]
     assert "figure" not in scores.columns
-    from ui.components import build_ranking_table
-    wide, fig_cols = build_ranking_table(df, by_year=False)
-    assert sorted(fig_cols) == ["Barracuda", "Straight Ballet Leg"] and len(wide) == 2
 
 
 @pytest.fixture
