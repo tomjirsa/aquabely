@@ -140,9 +140,9 @@ AUTH_HASH=$2a$14$...
 
 ---
 
-### Step 8 — Old databases
+### Step 8 — Existing database
 
-The schema changed in this release and an old database cannot be used. Before the first start, stop the app and delete or rename the old /data/aquabely.db in the aquabely-data volume. The app creates a fresh database on first start.
+This release does not change the database. Keep the existing aquabely-data volume; the app opens the existing database and applies the schema on start.
 
 ---
 
