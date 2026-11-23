@@ -88,3 +88,44 @@ def test_import_validation_failure_returns_422_with_errors(client, sample_pdf_by
     r = client.post("/api/imports", json=body)
     assert r.status_code == 422
     assert r.json() == {"detail": "Validation failed", "errors": ["bad total"]}
+
+
+def _upload_as(client, data, format_id, name="u12.pdf"):
+    return client.post("/api/imports/preview",
+                       files={"file": (name, data, "application/pdf")},
+                       data={"format_id": format_id})
+
+
+def test_preview_with_format_id_parses_with_that_format(client, sample_pdf_bytes, inbox, monkeypatch):
+    from api.routers import imports
+    from parser.registry import UnknownFormatError
+
+    def no_detect(*a, **k):
+        raise UnknownFormatError("no parser matched")
+    # Detection fails, so a correct result proves the chosen format was used.
+    monkeypatch.setattr(imports, "detect_format", no_detect)
+    r = _upload_as(client, sample_pdf_bytes, "u12")
+    assert r.status_code == 200
+    body = r.json()
+    assert body["format_id"] == "u12"
+    assert body["level"] == "U12"
+    assert body["athlete_count"] > 0
+    assert body["competition"]
+    assert not any(e.startswith("Could not detect the format") for e in body["errors"])
+    assert (inbox / f"{body['sha256']}.pdf").exists()
+
+
+def test_preview_with_format_id_skips_detection(client):
+    r = _upload_as(client, b"not a pdf", "u12", "bad.pdf")
+    assert r.status_code == 200
+    body = r.json()
+    assert body["format_id"] == "u12"
+    assert body["errors"]
+    assert not any(e.startswith("Could not detect the format") for e in body["errors"])
+
+
+def test_preview_with_unknown_format_id_returns_422(client, inbox):
+    r = _upload_as(client, b"not a pdf", "nope")
+    assert r.status_code == 422
+    assert r.json() == {"detail": "Unknown format id: nope"}
+    assert not inbox.exists() or not list(inbox.iterdir())

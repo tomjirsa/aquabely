@@ -4,7 +4,7 @@ import re
 from pathlib import Path
 
 import pdfplumber
-from fastapi import APIRouter, HTTPException, UploadFile
+from fastapi import APIRouter, Form, HTTPException, UploadFile
 from fastapi.concurrency import run_in_threadpool
 from fastapi.responses import JSONResponse
 
@@ -63,13 +63,20 @@ async def _read_capped(file: UploadFile) -> bytes:
 
 
 @router.post("/preview", response_model=ImportPreview)
-async def preview(file: UploadFile):
+async def preview(file: UploadFile, format_id: str | None = Form(None)):
+    """Store the upload and parse it.
+
+    Without format_id the format is detected from the first page. With
+    format_id (a manual choice) detection is skipped and that format is used.
+    """
+    if format_id is not None and format_id not in {p.format_id for p in PARSERS}:
+        raise HTTPException(status_code=422, detail=f"Unknown format id: {format_id}")
     data = await _read_capped(file)
     # The PDF parse is synchronous and slow: run it off the event loop.
-    return await run_in_threadpool(_build_preview, data, file.filename)
+    return await run_in_threadpool(_build_preview, data, file.filename, format_id)
 
 
-def _build_preview(data: bytes, filename: str | None) -> dict:
+def _build_preview(data: bytes, filename: str | None, format_id: str | None = None) -> dict:
     sha = hashlib.sha256(data).hexdigest()
     dest = upload_path(_inbox(), data)
     write_if_changed(dest, data)
@@ -77,14 +84,17 @@ def _build_preview(data: bytes, filename: str | None) -> dict:
     result = {"sha256": sha, "filename": filename or "upload.pdf",
               "available_formats": [p.format_id for p in PARSERS],
               "errors": [], "warnings": []}
-    try:
-        result["format_id"] = detect_format(_first_page_text(dest)).format_id
-    except (UnknownFormatError, AmbiguousFormatError) as exc:
-        result["errors"].append(f"Could not detect the format: {exc}")
-        return result
-    except Exception as exc:
-        result["errors"].append(f"Could not read the PDF: {exc}")
-        return result
+    if format_id is not None:
+        result["format_id"] = format_id
+    else:
+        try:
+            result["format_id"] = detect_format(_first_page_text(dest)).format_id
+        except (UnknownFormatError, AmbiguousFormatError) as exc:
+            result["errors"].append(f"Could not detect the format: {exc}")
+            return result
+        except Exception as exc:
+            result["errors"].append(f"Could not read the PDF: {exc}")
+            return result
 
     try:
         comp = get_parser(result["format_id"]).parse(dest)

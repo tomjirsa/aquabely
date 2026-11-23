@@ -40,7 +40,8 @@ test("undetected format shows dropdown and Import is disabled until chosen", asy
   const btn = screen.getByRole("button", { name: "Import" });
   expect(btn).toBeDisabled();
   fireEvent.change(select, { target: { value: "fmt2" } });
-  expect(btn).toBeEnabled();
+  // Choosing a format re-runs the preview; Import enables once it returns.
+  await waitFor(() => expect(btn).toBeEnabled());
   expect(screen.getByText("Could not detect the format: test")).toBeInTheDocument();
   expect(document.body.textContent).not.toMatch(/undefined|NaN|null/);
 });
@@ -48,6 +49,8 @@ test("undetected format shows dropdown and Import is disabled until chosen", asy
 test("a real validation error still disables Import after choosing a format", async () => {
   await upload({ format_id: null, errors: ["Could not detect the format: test", "bad row"] });
   fireEvent.change(screen.getByRole("combobox", { name: /format/i }), { target: { value: "fmt2" } });
+  await waitFor(() => expect(mockForm).toHaveBeenCalledTimes(2));
+  await waitFor(() => expect(screen.getByRole("combobox", { name: /format/i })).toBeEnabled());
   expect(screen.getByRole("button", { name: "Import" })).toBeDisabled();
 });
 
@@ -108,4 +111,48 @@ test("preview failure (413) shows the error", async () => {
   render(<ImportPage />);
   fireEvent.change(screen.getByLabelText(/choose pdf/i), { target: { files: [new File(["x"], "r.pdf")] } });
   await waitFor(() => expect(screen.getByText("File exceeds 50 MB")).toBeInTheDocument());
+});
+
+test("format selector is always shown and defaults to the detected format", async () => {
+  await upload();
+  const select = screen.getByRole("combobox", { name: /format/i });
+  expect(select).toHaveValue("fmt1");
+});
+
+test("shows the competition name next to level and athlete count", async () => {
+  await upload({ competition: "Spring Cup 2026" });
+  expect(screen.getByText("Spring Cup 2026")).toBeInTheDocument();
+});
+
+test("changing the format re-runs the preview with format_id", async () => {
+  await upload();
+  const file = (mockForm.mock.calls[0][1] as FormData).get("file");
+  mockForm.mockResolvedValue(preview({
+    format_id: "fmt2", level: "U12", competition: "Other Cup", athlete_count: 7, errors: ["bad total"],
+  }));
+  fireEvent.change(screen.getByRole("combobox", { name: /format/i }), { target: { value: "fmt2" } });
+  await screen.findByText("Other Cup");
+  expect(mockForm).toHaveBeenCalledTimes(2);
+  const [path, form] = mockForm.mock.calls[1];
+  expect(path).toBe("/api/imports/preview");
+  expect((form as FormData).get("format_id")).toBe("fmt2");
+  expect((form as FormData).get("file")).toBe(file);
+  expect(screen.getByText("U12")).toBeInTheDocument();
+  expect(screen.getByText("7")).toBeInTheDocument();
+  expect(screen.getByText("bad total")).toBeInTheDocument();
+  expect(screen.getByRole("button", { name: "Import" })).toBeDisabled();
+});
+
+test("Import is disabled while the re-preview runs and uses the chosen format", async () => {
+  await upload();
+  let resolve!: (v: unknown) => void;
+  mockForm.mockReturnValue(new Promise((r) => { resolve = r; }) as never);
+  fireEvent.change(screen.getByRole("combobox", { name: /format/i }), { target: { value: "fmt2" } });
+  expect(screen.getByRole("button", { name: "Import" })).toBeDisabled();
+  resolve(preview({ format_id: "fmt2" }));
+  await waitFor(() => expect(screen.getByRole("button", { name: "Import" })).toBeEnabled());
+  mockPost.mockResolvedValue({ athlete_count: 12, level: "L3" });
+  fireEvent.click(screen.getByRole("button", { name: "Import" }));
+  await screen.findByText("Imported 12 athletes (L3).");
+  expect(mockPost).toHaveBeenCalledWith("/api/imports", { sha256: "a".repeat(64), filename: "r.pdf", format_id: "fmt2" });
 });
