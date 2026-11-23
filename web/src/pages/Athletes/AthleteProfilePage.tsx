@@ -21,12 +21,15 @@ function orNa(v: string | number | null | undefined): string {
 
 export function AthleteProfilePage() {
   const { id } = useParams();
-  const athleteId = Number(id);
+  // Only a positive whole number is a valid athlete id; anything else is "not found".
+  const validId = /^[1-9]\d*$/.test(id ?? "");
+  const athleteId = validId ? Number(id) : NaN;
   const [profile, setProfile] = useState<AthleteProfile | null>(null);
   const [error, setError] = useState<string | null>(null);
   const [tab, setTab] = useState<Tab>("overview");
 
   useEffect(() => {
+    if (!validId) return;
     let live = true;
     setProfile(null);
     setError(null);
@@ -34,8 +37,9 @@ export function AthleteProfilePage() {
       .then((p) => live && setProfile(p))
       .catch((e: Error) => live && setError(e.message));
     return () => { live = false; };
-  }, [athleteId]);
+  }, [athleteId, validId]);
 
+  if (!validId) return <div className={styles.page}><p role="alert" className={styles.error}>Athlete not found</p></div>;
   if (error) return <div className={styles.page}><p role="alert" className={styles.error}>{error}</p></div>;
   if (!profile) return <div className={styles.page}><p className={styles.muted}>Loading...</p></div>;
 

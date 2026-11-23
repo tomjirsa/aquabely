@@ -29,3 +29,13 @@ test("header and overview render with null values without NaN/undefined", async 
   fireEvent.click(screen.getByRole("tab", { name: "Competitions" }));
   expect(mockGet).toHaveBeenCalledWith("/api/athletes/7/competitions");
 });
+
+test.each(["abc", "1.5", "-3"])("non-numeric id %s shows not found without calling the API", async (id) => {
+  render(
+    <MemoryRouter initialEntries={[`/athletes/${id}`]}>
+      <Routes><Route path="/athletes/:id" element={<AthleteProfilePage />} /></Routes>
+    </MemoryRouter>,
+  );
+  expect(await screen.findByText("Athlete not found")).toBeInTheDocument();
+  expect(mockGet).not.toHaveBeenCalled();
+});
