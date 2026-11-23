@@ -7,7 +7,7 @@ import { AthletesPage } from "./pages/Athletes/AthletesPage";
 import { AthleteProfilePage } from "./pages/Athletes/AthleteProfilePage";
 import { ClubsPage } from "./pages/Clubs/ClubsPage";
 import { ClubDetailPage } from "./pages/Clubs/ClubDetailPage";
-import { ImportPage } from "./pages/ImportPage";
+import { ImportPage } from "./pages/Import/ImportPage";
 
 export function App() {
   return (
