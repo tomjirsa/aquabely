@@ -5,8 +5,8 @@ import { CompetitionsPage } from "./pages/Competitions/CompetitionsPage";
 import { FiguresPage } from "./pages/Figures/FiguresPage";
 import { AthletesPage } from "./pages/Athletes/AthletesPage";
 import { AthleteProfilePage } from "./pages/Athletes/AthleteProfilePage";
-import { ClubsPage } from "./pages/ClubsPage";
-import { ClubDetailPage } from "./pages/ClubDetailPage";
+import { ClubsPage } from "./pages/Clubs/ClubsPage";
+import { ClubDetailPage } from "./pages/Clubs/ClubDetailPage";
 import { ImportPage } from "./pages/ImportPage";
 
 export function App() {
