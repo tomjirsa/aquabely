@@ -36,14 +36,33 @@ for _old, _new in LEGACY_PATHS.items():
     app.add_api_route(_old, _redirect_to(_new), methods=["GET"], include_in_schema=False)
 
 
+NO_CACHE = {"Cache-Control": "no-cache"}
+
+
+def _is_asset_path(full_path: str) -> bool:
+    return full_path == "assets" or full_path.startswith("assets/")
+
+
 @app.get("/{full_path:path}", include_in_schema=False)
 def spa_fallback(full_path: str):
     if full_path == "api" or full_path.startswith("api/"):
         raise HTTPException(status_code=404, detail="Not found")
-    candidate = (DIST_DIR / full_path).resolve()
-    if full_path and candidate.is_file() and candidate.is_relative_to(DIST_DIR.resolve()):
-        return FileResponse(candidate)
-    index = DIST_DIR / "index.html"
+    root = DIST_DIR.resolve()
+    index = root / "index.html"
+    if full_path:
+        try:
+            candidate = (root / full_path).resolve()
+        except (ValueError, OSError):  # e.g. a null byte in the path
+            candidate = None
+        # Containment first: never touch a path outside the built app.
+        if candidate is not None and candidate.is_relative_to(root) and candidate.is_file():
+            if candidate == index:
+                return FileResponse(index, headers=NO_CACHE)
+            return FileResponse(candidate)
+    # A missing built file is a real 404; serving the shell would hide a stale deploy.
+    if _is_asset_path(full_path):
+        raise HTTPException(status_code=404, detail="Not found")
     if not index.is_file():
         raise HTTPException(status_code=404, detail="Not found")
-    return FileResponse(index)
+    # The shell names the hashed assets, so browsers must revalidate it.
+    return FileResponse(index, headers=NO_CACHE)
