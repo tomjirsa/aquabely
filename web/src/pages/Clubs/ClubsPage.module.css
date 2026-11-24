@@ -1,0 +1,20 @@
+.page { padding: 1.5rem; max-width: 1280px; margin: 0 auto; }
+.page h1, .page h2 { margin: 0; }
+.page h1 { font-size: 1.5rem; }
+.page h2 { font-size: 1.125rem; margin-top: 1.5rem; }
+.list { list-style: none; margin: 1.25rem 0 0; padding: 0; border-top: 1px solid var(--aq-border); }
+.list li { border-bottom: 1px solid var(--aq-border); }
+.link { display: block; padding: 0.625rem; color: var(--aq-text); text-decoration: none; }
+.link:hover, .link:focus-visible { background: var(--aq-surface); }
+.back { display: inline-block; margin-bottom: 0.75rem; color: var(--aq-muted); }
+.medals { display: flex; gap: 1rem; flex-wrap: wrap; margin-top: 0.75rem; }
+.medal { background: var(--aq-surface); border: 1px solid var(--aq-border); border-radius: 8px; padding: 0.5rem 1rem; text-align: center; min-width: 5rem; }
+.medalPlace { display: block; color: var(--aq-muted); font-size: 0.75rem; }
+.medalCount { display: block; font-size: 1.5rem; font-weight: 600; font-variant-numeric: tabular-nums; }
+.scroll { overflow-x: auto; margin-top: 0.75rem; }
+.table { width: 100%; border-collapse: collapse; font-size: 0.875rem; }
+.table th, .table td { padding: 0.5rem 0.625rem; text-align: left; border-bottom: 1px solid var(--aq-border); }
+.table th { background: var(--aq-surface); font-weight: 600; white-space: nowrap; }
+.table .num { text-align: right; font-variant-numeric: tabular-nums; }
+.empty { color: var(--aq-muted); margin-top: 1.25rem; }
+.error { color: var(--aq-text); background: var(--aq-bad-bg); padding: 0.5rem 0.75rem; border-radius: 6px; margin-top: 1rem; }

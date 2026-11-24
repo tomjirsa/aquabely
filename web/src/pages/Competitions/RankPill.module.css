@@ -1,0 +1,9 @@
+.pill { display: inline-flex; font-variant-numeric: tabular-nums; font-size: 0.8125rem; font-weight: 600; }
+.half { min-width: 1.75rem; padding: 0.125rem 0.5rem; text-align: center; box-sizing: border-box; }
+.solo { border-radius: 999px; }
+.left { border-radius: 999px 0 0 999px; }
+.right { border-radius: 0 999px 999px 0; background: var(--aq-eq-bg); color: var(--aq-muted); font-weight: 500; }
+.gold { background: var(--aq-good-bg); color: var(--aq-text); }
+.silver { background: var(--aq-eq-bg); color: var(--aq-text); }
+.bronze { background: var(--aq-bad-bg); color: var(--aq-text); }
+.plain { background: transparent; color: var(--aq-text); }

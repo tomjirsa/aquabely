@@ -1,0 +1,16 @@
+.page { padding: 1.5rem; max-width: 960px; margin: 0 auto; }
+.page h1 { margin: 0 0 1rem; font-size: 1.5rem; }
+.picker { display: inline-flex; flex-direction: column; gap: 0.5rem; font-weight: 600; }
+.card { margin-top: 1.25rem; padding: 1rem; background: var(--aq-surface); border: 1px solid var(--aq-border); border-radius: 8px; }
+.card h2 { margin: 0 0 0.5rem; font-size: 1.125rem; overflow-wrap: anywhere; }
+.facts { display: grid; grid-template-columns: max-content 1fr; gap: 0.25rem 1rem; margin: 0 0 0.75rem; }
+.facts dt { color: var(--aq-muted); }
+.facts dd { margin: 0; }
+.errors { margin: 0 0 0.75rem; padding: 0.5rem 0.75rem 0.5rem 1.75rem; background: var(--aq-bad-bg); border-radius: 6px; }
+.warnings { margin-bottom: 0.75rem; color: var(--aq-muted); }
+.warnings summary { cursor: pointer; }
+.button { background: var(--aq-primary); color: var(--aq-bg); border: 0; border-radius: 6px; padding: 0.5rem 1rem; font: inherit; cursor: pointer; }
+.button:disabled { opacity: 0.5; cursor: not-allowed; }
+.ok { margin: 0.75rem 0 0; padding: 0.5rem 0.75rem; background: var(--aq-good-bg); border-radius: 6px; }
+.error { margin: 0.75rem 0 0; padding: 0.5rem 0.75rem; background: var(--aq-bad-bg); border-radius: 6px; }
+.muted { color: var(--aq-muted); }

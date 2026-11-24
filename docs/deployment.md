@@ -4,11 +4,11 @@
 
 ```
 Internet → Router (port forward) → NAS
-           80  → 8080               ├── Caddy (host 8080/8443 → container 80/443)
+           80  → 8080               ├── Caddy (host 8080/8443 → container 80/445)
            443 → 8443               │     • HTTPS via Let's Encrypt
-                                    │     • Import page: password-protected
-                                    │     • Dashboards: public
-                                    └── App container (port 8504)
+                                    │     • Whole site behind basic auth
+                                    └── App container (FastAPI, port 8000)
+                                          • serves /api and the built React app
                                           • aquabely-data volume  ← SQLite DB
                                           • aquabely-inbox volume ← PDF uploads
 ```
@@ -17,9 +17,9 @@ Internet → Router (port forward) → NAS
 
 | File | Purpose |
 |------|---------|
-| `Dockerfile` | Builds the app image |
+| `Dockerfile` | Two-stage build: Node 24 builds the React app (`web/dist`), then a Python 3.12 image runs FastAPI with uvicorn on port 8000 and serves the built app |
 | `docker-compose.yml` | Runs the app + Caddy together |
-| `Caddyfile` | Reverse proxy: HTTPS, auth on Import page |
+| `Caddyfile` | Reverse proxy: HTTPS, basic auth on the whole site |
 | `.env.example` | Template for required environment variables |
 
 ---
@@ -110,7 +110,7 @@ scp -r /Users/tjirsik/Repository/aquabely user@192.168.1.100:~/aquabely
 
 ### Step 6 — Generate the admin password hash
 
-The Import page requires a password. Caddy stores it hashed.
+The whole site requires a password (Caddy basic auth). Caddy stores it hashed.
 
 Run this on the NAS and type your chosen password when prompted:
 ```sh
@@ -140,17 +140,9 @@ AUTH_HASH=$2a$14$...
 
 ---
 
-### Step 8 — (Optional) Migrate an existing database
+### Step 8 — Existing database
 
-If you already have data in a local `aquabely.db`, copy it into the Docker volume before first start:
-
-```sh
-docker volume create aquabely_aquabely-data
-docker run --rm \
-  -v aquabely_aquabely-data:/data \
-  -v $(pwd):/src \
-  alpine cp /src/aquabely.db /data/aquabely.db
-```
+This release does not change the database. Keep the existing aquabely-data volume; the app opens the existing database and applies the schema on start.
 
 ---
 
@@ -185,8 +177,32 @@ The app is now live at `https://rookie-raspbi.cz`.
 
 | URL | Expected |
 |-----|----------|
-| `https://rookie-raspbi.cz` | Athletes dashboard loads |
-| `https://rookie-raspbi.cz/Import` | Browser prompts for username/password |
+| `https://rookie-raspbi.cz` | Browser prompts for username/password, then the home page loads |
+| `https://rookie-raspbi.cz/import` | Same login applies (every page is protected) |
+| `https://rookie-raspbi.cz/api/health` | `{"status":"ok"}` |
+
+The old paths `/Import`, `/Competitions`, `/Athletes`, `/Clubs` and `/Figures` redirect (301) to their lowercase routes.
+
+---
+
+## Running locally (without Docker)
+
+The API and the React app run as two processes during development.
+
+```sh
+# Terminal 1: API on http://localhost:8000
+pip install -r requirements.txt
+uvicorn api.main:app --reload --port 8000
+
+# Terminal 2: React dev server on http://localhost:5173 (proxies /api to port 8000)
+cd web
+npm ci
+npm run dev
+```
+
+To serve the built app from FastAPI alone, run `npm run build` in `web/` and start uvicorn. It serves `web/dist` for every non-API path, the same way the container does. Set `AQUABELY_DB` and `AQUABELY_INBOX` to choose where the database and uploads live.
+
+Tests: `python -m pytest -q` for the API, `npm test` in `web/` for the frontend.
 
 ---
 
@@ -194,18 +210,7 @@ The app is now live at `https://rookie-raspbi.cz`.
 
 ### Adding PDFs to import
 
-PDFs live in the `aquabely-inbox` Docker volume. Copy a file in from the NAS host:
-
-```sh
-docker run --rm \
-  -v aquabely_aquabely-inbox:/inbox \
-  -v /path/to/your/pdfs:/src \
-  alpine cp /src/result.pdf /inbox/result.pdf
-```
-
-Then open `https://rookie-raspbi.cz/Import` in the browser and click **Import**.
-
-> If your NAS has a file manager that can browse Docker volumes (e.g. Portainer), you can drag and drop files there instead.
+Upload PDFs on the Import page. The inbox is used only to store uploads.
 
 ### Updating the app
 

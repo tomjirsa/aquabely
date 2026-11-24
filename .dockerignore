@@ -1,6 +1,13 @@
-.venv
-__pycache__
+web/node_modules
+web/dist
+.git
+.idea
+data/
+tests/
+Screenshot*.png
+__pycache__/
 *.pyc
+.venv
 .DS_Store
 *.db
 .env

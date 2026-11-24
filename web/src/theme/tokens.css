@@ -1,0 +1,34 @@
+:root {
+  --aq-primary: #0E7490;
+  --aq-accent: #5B4BD6;
+  --aq-surface: #F3F6FA;
+  --aq-border: #E2E8F0;
+  --aq-muted: #64748B;
+  --aq-text: #0F172A;
+  --aq-bg: #FFFFFF;
+  --aq-good-bg: #DCFCE7;
+  --aq-bad-bg: #FEE2E2;
+  --aq-eq-bg: #F3F4F6;
+  font-family: "Inter", system-ui, sans-serif;
+}
+
+@media (prefers-color-scheme: dark) {
+  :root {
+    --aq-primary: #22A5C4;
+    --aq-accent: #8B7FF0;
+    --aq-surface: #1E293B;
+    --aq-border: #334155;
+    --aq-muted: #94A3B8;
+    --aq-text: #F1F5F9;
+    --aq-bg: #0F172A;
+    --aq-good-bg: #14532D;
+    --aq-bad-bg: #7F1D1D;
+    --aq-eq-bg: #374151;
+  }
+}
+
+body {
+  margin: 0;
+  background: var(--aq-bg);
+  color: var(--aq-text);
+}

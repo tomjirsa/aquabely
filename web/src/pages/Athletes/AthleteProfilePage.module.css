@@ -1,0 +1,31 @@
+.page { padding: 1.5rem; max-width: 1280px; margin: 0 auto; }
+.title { margin: 0 0 1rem; font-size: 1.5rem; }
+.cards { display: grid; grid-template-columns: repeat(auto-fit, minmax(10rem, 1fr)); gap: 0.75rem; }
+.card { display: flex; flex-direction: column; gap: 0.25rem; padding: 0.75rem 1rem; background: var(--aq-surface); border: 1px solid var(--aq-border); border-radius: 8px; }
+.cardLabel { color: var(--aq-muted); font-size: 0.75rem; text-transform: uppercase; letter-spacing: 0.04em; }
+.cardValue { font-size: 1.125rem; font-weight: 600; font-variant-numeric: tabular-nums; }
+.tabs, .subTabs { display: flex; gap: 0.25rem; flex-wrap: wrap; margin-top: 1.25rem; border-bottom: 1px solid var(--aq-border); }
+.subTabs { border-bottom: 0; margin-top: 1rem; }
+.tab, .tabActive { border: 0; border-bottom: 2px solid transparent; padding: 0.5rem 0.875rem; font: inherit; cursor: pointer; background: transparent; color: var(--aq-muted); }
+.tabActive { color: var(--aq-primary); border-bottom-color: var(--aq-primary); font-weight: 600; }
+.modeSwitch { display: inline-flex; margin-top: 1.25rem; border: 1px solid var(--aq-border); border-radius: 8px; overflow: hidden; }
+.modeBtn, .modeActive { border: 0; padding: 0.375rem 1rem; font: inherit; cursor: pointer; background: var(--aq-bg); color: var(--aq-text); }
+.modeActive { background: var(--aq-primary); color: var(--aq-bg); }
+.section { margin-top: 1.5rem; }
+.section h2 { font-size: 1.0625rem; margin: 0 0 0.5rem; }
+.rankLine { margin: 1rem 0 0.25rem; font-weight: 600; }
+.note { margin: 0 0 0.5rem; color: var(--aq-muted); font-size: 0.8125rem; }
+.scroll { overflow-x: auto; margin-top: 0.75rem; }
+.table { width: 100%; border-collapse: collapse; font-size: 0.875rem; }
+.table th, .table td { padding: 0.5rem 0.625rem; text-align: left; border-bottom: 1px solid var(--aq-border); }
+.table th { background: var(--aq-surface); font-weight: 600; white-space: nowrap; }
+.table .num { text-align: right; font-variant-numeric: tabular-nums; }
+.marks { font-variant-numeric: tabular-nums; }
+.mark { display: inline-block; min-width: 2.25rem; margin-right: 0.25rem; }
+.mark s { color: var(--aq-muted); }
+.rankCell { display: inline-block; padding: 0.125rem 0.5rem; border-radius: 999px; }
+.toneBetter { background: var(--aq-good-bg); }
+.toneWorse { background: var(--aq-bad-bg); }
+.toneEqual { background: var(--aq-eq-bg); }
+.muted { color: var(--aq-muted); margin-top: 1.25rem; }
+.error { color: var(--aq-text); background: var(--aq-bad-bg); padding: 0.5rem 0.75rem; border-radius: 6px; margin-top: 1rem; }

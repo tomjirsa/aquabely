@@ -1,0 +1,13 @@
+.page { padding: 1.5rem; max-width: 1280px; margin: 0 auto; }
+.header { display: flex; align-items: center; justify-content: space-between; gap: 1rem; }
+.header h1 { margin: 0; font-size: 1.5rem; }
+.levelSwitch { display: inline-flex; border: 1px solid var(--aq-border); border-radius: 8px; overflow: hidden; }
+.levelBtn, .levelActive { border: 0; padding: 0.375rem 1rem; font: inherit; cursor: pointer; background: var(--aq-bg); color: var(--aq-text); }
+.levelActive { background: var(--aq-primary); color: var(--aq-bg); }
+.cards { display: grid; grid-template-columns: repeat(auto-fit, minmax(14rem, 1fr)); gap: 1rem; margin-top: 1.25rem; }
+.card { background: var(--aq-surface); border: 1px solid var(--aq-border); border-radius: 8px; padding: 1rem; }
+.card h2 { margin: 0 0 0.5rem; font-size: 0.8125rem; font-weight: 600; color: var(--aq-muted); }
+.value { font-size: 1.25rem; font-variant-numeric: tabular-nums; }
+.sub { color: var(--aq-muted); font-size: 0.8125rem; margin-top: 0.25rem; }
+.empty { color: var(--aq-muted); margin-top: 1.25rem; }
+.error { color: var(--aq-text); background: var(--aq-bad-bg); padding: 0.5rem 0.75rem; border-radius: 6px; margin-top: 1rem; }
